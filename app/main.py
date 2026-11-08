@@ -105,10 +105,28 @@ def lan_ip() -> str:
         return "127.0.0.1"
 
 
+def codespace_url(request: Request) -> str | None:
+    """Dans un GitHub Codespace, le serveur voit « localhost » : l'adresse publique se déduit de l'environnement."""
+    name, domain = os.environ.get("CODESPACE_NAME"), os.environ.get("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN")
+    if not (name and domain):
+        return None
+    return f"https://{name}-{request.url.port or 8000}.{domain}"
+
+
+def is_local_only(request: Request) -> bool:
+    """Vrai si les téléphones ne peuvent joindre l'application que par le Wi-Fi de l'ordinateur."""
+    if os.environ.get("QUIZ_PUBLIC_URL") or codespace_url(request):
+        return False
+    return (request.url.hostname or "") in ("localhost", "127.0.0.1", "::1")
+
+
 def public_base(request: Request) -> str:
     """URL que les téléphones doivent ouvrir (adresse réseau local si on est sur localhost)."""
     if os.environ.get("QUIZ_PUBLIC_URL"):
         return os.environ["QUIZ_PUBLIC_URL"].rstrip("/")
+    codespace = codespace_url(request)
+    if codespace:
+        return codespace
     base = str(request.base_url).rstrip("/")
     host = request.url.hostname or ""
     if host in ("localhost", "127.0.0.1", "::1"):
@@ -180,7 +198,7 @@ def join_page(request: Request, code: str, s=Depends(get_db)):
 def open_admin_page(request: Request, code: str, s=Depends(get_db)):
     open_session(s, code)
     base = public_base(request)
-    local = (request.url.hostname or "") in ("localhost", "127.0.0.1", "::1")
+    local = is_local_only(request)
     return templates.TemplateResponse(request, "open_admin.html", {
         "code": code, "join_url": f"{base}/j/{code}", "join_short": base.split("://", 1)[-1] + "/play", "local_only": local})
 
@@ -194,7 +212,7 @@ def host_page(request: Request, code: str):
             "text": "Cette partie n'est plus active (le serveur a peut-être redémarré). Lancez-en une nouvelle."},
             status_code=404)
     base = public_base(request)
-    local = (request.url.hostname or "") in ("localhost", "127.0.0.1", "::1")
+    local = is_local_only(request)
     return templates.TemplateResponse(request, "host.html", {
         "code": code, "host_key": request.query_params.get("k", ""),
         "join_url": f"{base}/j/{code}", "join_short": base.split("://", 1)[-1] + "/play", "local_only": local})

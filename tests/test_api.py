@@ -312,3 +312,17 @@ def test_mode_quand_on_veut_reponse_hors_delai(client):
     openmode._started[pid] = (0, time.monotonic() - 10.2)          # dans la tolérance réseau : limite 10 s + 0,4 s
     a = client.post(f"/api/open/{code}/answer", json={"token": tok, "question_index": 0, "value": 1}).json()
     assert a["correct"] and a["points"] == 500 and not a["timed_out"]   # accepté, mais au minimum de points
+
+
+def test_adresse_publique_codespace(client, monkeypatch):
+    """Dans un Codespace, le serveur voit « localhost » : le QR code doit pointer vers l'adresse publique du port."""
+    monkeypatch.setenv("CODESPACE_NAME", "mon-espace-abc")
+    monkeypatch.setenv("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev")
+    from app.main import codespace_url, is_local_only, public_base
+    from starlette.requests import Request
+    req = Request({"type": "http", "method": "GET", "path": "/", "headers": [(b"host", b"localhost:8000")],
+                   "server": ("localhost", 8000), "scheme": "http", "query_string": b""})
+    assert public_base(req) == "https://mon-espace-abc-8000.app.github.dev"
+    assert codespace_url(req) and not is_local_only(req)
+    monkeypatch.setenv("QUIZ_PUBLIC_URL", "https://exemple.fr/")
+    assert public_base(req) == "https://exemple.fr"            # le réglage explicite reste prioritaire
