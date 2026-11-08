@@ -45,8 +45,9 @@ function render(s) {
 function renderLobby(s) {
   fill(stage, h('div', { class: 'card center stack' },
     h('h1', {}, `Prêt(e), ${player.name} ? 🎉`), h('p', { class: 'muted' }, s.title),
-    h('div', { class: 'banner wait' }, 'En attente du lancement par l’organisateur…'),
-    s.auto ? h('p', { class: 'muted' }, '⏩ Mode automatique : les questions s’enchaîneront toutes seules.') : null,
+    s.start_in_ms != null ? null : h('div', { class: 'banner wait' }, 'En attente du lancement par l’organisateur…'),
+    s.start_in_ms != null ? countdownNode(s.start_in_ms, 'Début du quiz')
+      : s.auto ? h('p', { class: 'muted' }, '⏩ Mode automatique : les questions s’enchaîneront toutes seules.') : null,
     h('div', { class: 'chips' }, s.players.map((n) => h('span', { class: 'chip' }, n)))));
 }
 

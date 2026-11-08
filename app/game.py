@@ -19,6 +19,14 @@ from .scoring import (compute_points, correct_text, given_text, is_correct,
 
 GRACE_S = 0.4   # tolérance réseau après la fin du chrono
 AUTO_DELAY_MIN, AUTO_DELAY_MAX, AUTO_DELAY_DEFAULT = 1, 60, 8   # pause (s) entre la révélation et la question suivante
+AUTO_START_MAX, AUTO_START_DEFAULT = 3600, 30   # mode automatique : le quiz démarre N s après l'arrivée du 1er joueur (0 = manuel)
+
+
+def clamp_start(value) -> int:
+    try:
+        return max(0, min(AUTO_START_MAX, int(value)))
+    except (TypeError, ValueError):
+        return AUTO_START_DEFAULT
 
 
 def clamp_delay(value) -> int:
@@ -34,7 +42,7 @@ class GameError(Exception):
 
 class Game:
     def __init__(self, session_id: int, code: str, host_key: str, title: str, questions: list[dict],
-                 auto: bool = False, auto_delay: int = AUTO_DELAY_DEFAULT):
+                 auto: bool = False, auto_delay: int = AUTO_DELAY_DEFAULT, auto_start: int = AUTO_START_DEFAULT):
         self.session_id, self.code, self.host_key = session_id, code, host_key
         self.title, self.questions = title, questions
         # Mode automatique : après chaque révélation, la question suivante (ou le podium) arrive
@@ -43,6 +51,10 @@ class Game:
         self.auto_delay = clamp_delay(auto_delay)
         self.auto_timer: asyncio.Task | None = None
         self.next_at = 0.0                     # échéance (monotonic) du prochain enchaînement automatique
+        # Démarrage automatique : le compte à rebours part à l'arrivée du premier joueur (0 = l'organisateur lance).
+        self.auto_start = clamp_start(auto_start)
+        self.start_timer: asyncio.Task | None = None
+        self.start_at = 0.0
         self.phase = "lobby"
         self.q_index = -1
         self.deadline = 0.0
@@ -71,7 +83,32 @@ class Game:
             s.commit()
             pid = pl.id
         self.players[pid] = {"name": name, "token": token, "score": 0}
+        self._maybe_schedule_start()
         return pid, token
+
+    # ------------------------------------------------ démarrage automatique
+    def _maybe_schedule_start(self):
+        """Lance le compte à rebours de démarrage dès qu'il y a un joueur (mode automatique, salle d'attente)."""
+        if self.auto and self.auto_start and self.phase == "lobby" and self.players and not self.start_timer:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:                 # hors boucle asyncio (ex. appel synchrone) : l'organisateur lancera
+                return
+            self.start_at = time.monotonic() + self.auto_start
+            self.start_timer = loop.create_task(self._auto_start(self.auto_start))
+
+    def _cancel_start_timer(self):
+        if self.start_timer and self.start_timer is not asyncio.current_task():
+            self.start_timer.cancel()
+        self.start_timer, self.start_at = None, 0.0
+
+    async def _auto_start(self, delay: float):
+        try:
+            await asyncio.sleep(delay)
+        except asyncio.CancelledError:
+            return
+        if self.auto and self.phase == "lobby" and self.players:
+            await self._next_question()
 
     def player_by_token(self, token: str) -> int | None:
         for pid, p in self.players.items():
@@ -126,14 +163,17 @@ class Game:
         elif t == "skip" and self.phase == "question":
             await self._reveal()
         elif t == "auto" and self.phase != "finished":
-            await self._set_auto(bool(msg.get("value")), msg.get("delay", self.auto_delay))
+            await self._set_auto(bool(msg.get("value")), msg.get("delay", self.auto_delay),
+                                 msg.get("start_delay", self.auto_start))
 
-    async def _set_auto(self, enabled: bool, delay):
+    async def _set_auto(self, enabled: bool, delay, start_delay):
         """Active / règle / coupe le mode automatique, y compris en pleine partie."""
-        self.auto, self.auto_delay = enabled, clamp_delay(delay)
+        self.auto, self.auto_delay, self.auto_start = enabled, clamp_delay(delay), clamp_start(start_delay)
         self._cancel_auto_timer()
         if self.auto and self.phase == "reveal":
             self._schedule_auto_next()
+        self._cancel_start_timer()               # le compte à rebours repart avec les nouveaux réglages
+        self._maybe_schedule_start()
         await self.broadcast()
 
     def _cancel_auto_timer(self):
@@ -186,6 +226,7 @@ class Game:
     # ------------------------------------------------------ enchaînement
     async def _next_question(self):
         self._cancel_auto_timer()
+        self._cancel_start_timer()
         self.q_index += 1
         if self.q_index >= len(self.questions):
             await self._finish()
@@ -254,7 +295,9 @@ class Game:
         snap = {"type": "state", "phase": self.phase, "code": self.code, "title": self.title,
                 "player_count": len(self.players),
                 "players": [p["name"] for p in self.players.values()],
-                "auto": self.auto, "auto_delay": self.auto_delay}
+                "auto": self.auto, "auto_delay": self.auto_delay, "auto_start": self.auto_start}
+        if self.phase == "lobby" and self.auto and self.start_at:
+            snap["start_in_ms"] = max(int((self.start_at - time.monotonic()) * 1000), 0)
         if self.phase in ("question", "reveal"):
             q = self.questions[self.q_index]
             snap["question"] = {"index": self.q_index, "total": len(self.questions),

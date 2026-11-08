@@ -21,16 +21,25 @@ function connect() {
 }
 const send = (type, extra) => ws && ws.readyState === 1 && ws.send(JSON.stringify({ type, ...extra }));
 const DELAYS = [5, 8, 12, 20, 30];
+const STARTS = [[0, 'Je lance moi-même'], [15, '15 s'], [30, '30 s'], [60, '1 min'], [120, '2 min'], [300, '5 min']];
 
-/** Réglage du mode automatique : enchaîne les questions sans l'organisateur. Modifiable à tout moment. */
+/** Réglage du mode automatique : démarrage et enchaînement sans l'organisateur. Modifiable à tout moment. */
 function autoControl(s) {
-  const box = h('input', { type: 'checkbox', checked: s.auto, onchange: (e) => send('auto', { value: e.target.checked, delay: s.auto_delay }) });
+  const emit = (patch) => send('auto', { value: s.auto, delay: s.auto_delay, start_delay: s.auto_start, ...patch });
+  const box = h('input', { type: 'checkbox', checked: s.auto, onchange: (e) => emit({ value: e.target.checked }) });
   const delays = DELAYS.includes(s.auto_delay) ? DELAYS : [...DELAYS, s.auto_delay].sort((a, b) => a - b);
-  const sel = h('select', { onchange: (e) => send('auto', { value: s.auto, delay: +e.target.value }) },
+  const sel = h('select', { onchange: (e) => emit({ delay: +e.target.value }) },
     delays.map((d) => h('option', { value: d, selected: d === s.auto_delay }, `${d} s`)));
-  return h('div', { class: 'card row center auto-ctl', style: 'justify-content:center;gap:12px;margin-top:16px' },
+  const starts = STARTS.some(([v]) => v === s.auto_start) ? STARTS : [...STARTS, [s.auto_start, `${s.auto_start} s`]];
+  const startSel = h('select', { onchange: (e) => emit({ start_delay: +e.target.value }) },
+    starts.map(([v, label]) => h('option', { value: v, selected: v === s.auto_start }, label)));
+  return h('div', { class: 'card stack auto-ctl', style: 'margin-top:16px;align-items:center' },
     h('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer' }, box, h('b', {}, '⏩ Mode automatique')),
-    h('span', { class: 'muted' }, 'pause avant la question suivante :'), sel);
+    s.phase === 'lobby' ? h('div', { class: 'row', style: 'justify-content:center;gap:8px' },
+      h('span', { class: 'muted' }, 'le quiz démarre seul :'), startSel,
+      h('span', { class: 'muted' }, 'après l’arrivée du 1er joueur')) : null,
+    h('div', { class: 'row', style: 'justify-content:center;gap:8px' },
+      h('span', { class: 'muted' }, 'pause avant la question suivante :'), sel));
 }
 
 function render(s) {
@@ -60,8 +69,9 @@ function renderLobby(s) {
     h('h2', { class: 'center' }, `👥 ${s.player_count} joueur${s.player_count > 1 ? 's' : ''}`),
     h('div', { class: 'chips' }, s.players.length ? s.players.map((n) => h('span', { class: 'chip' }, n)) :
       h('span', { class: 'muted' }, 'En attente des participants…')),
+    s.start_in_ms != null ? countdownNode(s.start_in_ms, 'Début du quiz') : null,
     autoControl(s),
-    h('button', { class: 'btn green', disabled: !s.player_count, onclick: () => send('start') }, '🚀 Lancer le quiz')));
+    h('button', { class: 'btn green', disabled: !s.player_count, onclick: () => send('start') }, '🚀 Lancer le quiz maintenant')));
 }
 
 function renderQuestion(s) {

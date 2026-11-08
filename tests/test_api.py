@@ -326,3 +326,34 @@ def test_adresse_publique_codespace(client, monkeypatch):
     assert codespace_url(req) and not is_local_only(req)
     monkeypatch.setenv("QUIZ_PUBLIC_URL", "https://exemple.fr/")
     assert public_base(req) == "https://exemple.fr"            # le réglage explicite reste prioritaire
+
+
+def test_demarrage_automatique(client):
+    """Mode automatique : le quiz démarre seul après l'arrivée du 1er joueur, sans « start » de l'organisateur."""
+    qid = make_quiz(client)
+    r = client.post("/api/sessions", json={"quiz_id": qid, "mode": "multi", "auto": True, "auto_delay": 1}).json()
+    code, key = r["code"], r["url"].split("k=")[1]
+    with client.websocket_connect(f"/ws/host/{code}?k={key}") as host:
+        lobby = recv_until(host, "lobby")
+        assert lobby["auto_start"] == 30 and "start_in_ms" not in lobby          # pas de joueur : pas de compte à rebours
+        host.send_json({"type": "auto", "value": True, "delay": 1, "start_delay": 1})   # démarrage dans 1 s
+        recv_until(host, "lobby")
+        tok = client.post("/api/join", json={"code": code, "name": "Lea"}).json()["token"]
+        with client.websocket_connect(f"/ws/play/{code}?token={tok}") as lea:
+            s = recv_until(lea, "lobby")
+            assert 0 < s["start_in_ms"] <= 1000
+            q = recv_until(lea, "question")                                       # démarré sans « start »
+            assert q["question"]["index"] == 0
+
+
+def test_demarrage_automatique_manuel(client):
+    """Avec « Je lance moi-même » (0) ou le mode automatique coupé, rien ne démarre tout seul."""
+    qid = make_quiz(client)
+    r = client.post("/api/sessions", json={"quiz_id": qid, "mode": "multi", "auto": True}).json()
+    code, key = r["code"], r["url"].split("k=")[1]
+    with client.websocket_connect(f"/ws/host/{code}?k={key}") as host:
+        recv_until(host, "lobby")
+        host.send_json({"type": "auto", "value": True, "delay": 8, "start_delay": 0})
+        recv_until(host, "lobby")
+        client.post("/api/join", json={"code": code, "name": "Lea"})
+        assert "start_in_ms" not in recv_until(host, "lobby")

@@ -10,7 +10,7 @@ Application de quiz en direct, simple et moderne. Les participants **scannent un
 |---|---|
 | **Créer un quiz** | titre, description, questions illimitées, QCM (2 à 4 réponses), vrai/faux, réponse libre, image / vidéo / son, temps (10, 15, 20, 30 s), explication, réorganisation ↑↓ |
 | **Mode multi-téléphones** | code à 6 chiffres + QR code, prénom, questions et chrono synchronisés par WebSocket, classement en direct, reconnexion automatique |
-| **Mode automatique** | case à cocher à la création de la partie (ou sur l'écran organisateur, à tout moment) : après chaque question, la bonne réponse s'affiche puis la suivante arrive toute seule après une pause réglable (5 à 30 s), jusqu'au podium. Fonctionne même si l'organisateur ferme son écran |
+| **Mode automatique** | case à cocher à la création de la partie (ou sur l'écran organisateur, à tout moment) : le quiz **démarre seul** (par défaut 30 s après l'arrivée du 1er joueur, réglable ou désactivable), puis après chaque question la bonne réponse s'affiche et la suivante arrive toute seule après une pause réglable (5 à 30 s), jusqu'au podium. Fonctionne même si l'organisateur ferme son écran |
 | **Mode « quand on veut »** | un QR code à partager (affiche, écran, message) : chacun scanne et fait le quiz **seul, quand il veut**, à son rythme. Aucun organisateur : les questions s'enchaînent toutes seules, chaque question est chronométrée par le serveur, classement provisoire en direct, clôture par l'organisateur |
 | **Mode un seul téléphone** | l'organisateur saisit les prénoms, chacun répond à son tour, le téléphone se passe de main en main |
 | **Jeu** | gros boutons, chrono animé, compte à rebours sonore, flash vert / rouge, bonne réponse + explication après chaque question |
@@ -44,7 +44,7 @@ Un quiz de démonstration de **15 questions** est créé automatiquement au prem
 3. L'écran affiche un **QR code** et un code à 6 chiffres. Projetez-le sur un écran ou une TV.
 4. Les participants scannent le QR code (appareil photo du téléphone), saisissent leur prénom, et attendent.
 5. Cliquez sur **Lancer le quiz**. À la fin de chaque question, vous voyez la bonne réponse et le classement, puis **Question suivante**.
-6. *Mode automatique (facultatif)* : cochez **⏩ Mode automatique** en créant la partie (ou sur l'écran organisateur). Après **Lancer le quiz**, tout s'enchaîne sans intervention : question, révélation, pause, question suivante, podium. Le bouton **Question suivante** reste disponible pour accélérer, et la case peut être décochée en cours de partie pour reprendre la main.
+6. *Mode automatique (facultatif)* : cochez **⏩ Mode automatique** en créant la partie (ou sur l'écran organisateur). Le quiz démarre tout seul quelques secondes après l'arrivée du premier joueur (compte à rebours affiché ; réglable sur l'écran organisateur, ou « Je lance moi-même » pour garder la main). Ensuite tout s'enchaîne sans intervention : question, révélation, pause, question suivante, podium. Le bouton **Question suivante** reste disponible pour accélérer, et la case peut être décochée en cours de partie pour reprendre la main.
 
 > Si le QR code ne fonctionne pas : vérifiez le Wi-Fi (le Wi-Fi « invité » isole souvent les appareils entre eux) et le pare-feu. Vous pouvez aussi saisir à la main l'adresse affichée sous le QR code.
 
