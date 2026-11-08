@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Éditeur de quiz – Quiz Party{% endblock %}
+{% block body %}
+<main class="wrap" id="app" data-quiz-id="{{ quiz_id }}">
+  <h1 id="page-title">✏️ Nouveau quiz</h1>
+  <section class="card">
+    <label class="field">Nom du quiz
+      <input type="text" id="title" maxlength="80" placeholder="Ex. : Quiz de l'anniversaire de Léa"></label>
+    <label class="field" style="margin:0">Description (facultatif)
+      <textarea id="description" rows="2" maxlength="300"></textarea></label>
+  </section>
+  <div id="questions"></div>
+  <button class="btn ghost" id="add">+ Ajouter une question</button>
+  <div class="error center" id="err" style="margin-top:12px"></div>
+  <div class="stack" style="margin-top:12px">
+    <button class="btn green" id="save">💾 Enregistrer le quiz</button>
+    <a class="btn ghost" href="/quizzes">Annuler</a>
+  </div>
+</main>
+{% endblock %}
+{% block scripts %}<script src="/static/js/editor.js"></script>{% endblock %}

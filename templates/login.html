@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="wrap">
+  <form class="card stack" method="post" action="/login">
+    <h1>Espace organisateur</h1>
+    <p class="muted">Cette zone est protégée par un mot de passe.</p>
+    <input type="hidden" name="next" value="{{ next }}">
+    <label class="field">Mot de passe
+      <input type="password" name="password" autofocus autocomplete="current-password"></label>
+    {% if error %}<div class="error">Mot de passe incorrect.</div>{% endif %}
+    <button class="btn">Se connecter</button>
+  </form>
+</main>
+{% endblock %}

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#6c4cf5">
+  <title>{% block title %}Quiz Party{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎉</text></svg>">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script>
+    (function () { var s = localStorage.getItem('qp_theme');
+      document.documentElement.dataset.theme = s || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); })();
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="logo">🎉</span> Quiz Party</a>
+    <div>
+      <button class="icon-btn" id="sound-btn" title="Son" aria-label="Activer ou couper le son">🔊</button>
+      <button class="icon-btn" id="theme-btn" title="Thème" aria-label="Mode clair ou sombre">🌙</button>
+    </div>
+  </header>
+  {% block body %}{% endblock %}
+  <script src="/static/js/common.js"></script>
+  <script src="/static/js/game-ui.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

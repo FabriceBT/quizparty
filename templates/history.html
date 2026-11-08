@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Historique – Quiz Party{% endblock %}
+{% block body %}
+<main class="wrap">
+  <h1>🏆 Historique des parties</h1>
+  <div id="list" class="stack"><p class="muted">Chargement…</p></div>
+  <p><a href="/">← Accueil</a></p>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+  const list = $('#list');
+  const MODES = { solo: 'un téléphone', open: 'quand on veut' };
+  const fmt = (iso) => new Date(iso).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+  async function load() {
+    const rows = await api('/api/history');
+    clear(list);
+    if (!rows.length) list.append(h('p', { class: 'muted center' }, 'Aucune partie jouée pour le moment.'));
+    for (const r of rows) {
+      const done = r.status === 'finished';
+      list.append(h('div', { class: 'card stack' },
+        h('div', {}, h('h2', { style: 'margin:0' }, r.title),
+          h('div', { class: 'muted' }, `${fmt(r.date)} · ${MODES[r.mode] || 'multi-téléphones'} · ${r.players} joueur${r.players > 1 ? 's' : ''}`),
+          done && r.winner ? h('div', {}, '🥇 ', h('b', {}, r.winner), ` — ${r.top_score} pts`) : h('span', { class: 'pill' }, 'non terminée')),
+        done ? h('div', { class: 'row' },
+          h('a', { class: 'btn small', href: `/results/${r.code}` }, 'Résultats'),
+          h('a', { class: 'btn ghost small', href: `/review/${r.code}` }, 'Réponses'),
+          h('a', { class: 'btn ghost small', href: `/api/sessions/${r.code}/export.xlsx` }, '📊 Excel'),
+          h('button', { class: 'btn ghost small', style: 'color:var(--ko)', onclick: () => del(r) }, '🗑')) :
+          h('div', { class: 'row' }, r.mode === 'open' ? h('a', { class: 'btn small', href: `/open/${r.code}` }, '🕒 Gérer') : null,
+            h('button', { class: 'btn ghost small', style: 'color:var(--ko)', onclick: () => del(r) }, '🗑 Supprimer'))));
+    }
+  }
+  async function del(r) {
+    if (!confirm('Supprimer cette partie de l’historique ?')) return;
+    await api(`/api/sessions/${r.code}`, { method: 'DELETE' }); load();
+  }
+  load().catch((e) => { fill(list, h('p', { class: 'error' }, e.message)); });
+</script>
+{% endblock %}

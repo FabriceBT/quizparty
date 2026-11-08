@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="wrap">
+  <section class="card center stack">
+    <h1>Rejoindre une partie</h1>
+    <p class="muted">Saisissez le code à 6 chiffres affiché sur l'écran de l'organisateur, ou scannez son QR code.</p>
+    <input class="code-input" id="code" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" autocomplete="off">
+    <div class="error" id="err"></div>
+    <button class="btn pink" id="go">Rejoindre</button>
+    <a class="btn ghost" href="/">Retour</a>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+  const code = $('#code'), err = $('#err');
+  async function go() {
+    err.textContent = '';
+    try { await api(`/api/sessions/${code.value.trim()}/exists`); location.href = `/j/${code.value.trim()}`; }
+    catch (e) { err.textContent = e.message; }
+  }
+  $('#go').onclick = go;
+  code.addEventListener('keydown', (e) => e.key === 'Enter' && go());
+  code.focus();
+</script>
+{% endblock %}
