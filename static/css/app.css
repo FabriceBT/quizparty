@@ -176,3 +176,57 @@ table.list td, table.list th { padding: 12px 8px; border-bottom: 1px solid var(-
 /* Mode automatique */
 input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--brand); flex: none; }
 .auto-ctl select, #multi-delay { width: auto; margin: 0; padding: 8px 12px; }
+
+/* Écrans de jeu compacts : tout tient sur un téléphone (portrait ou paysage), boutons plus petits */
+@media (max-width: 640px), (max-height: 600px) {
+  body { font-size: 16px; }
+  .topbar { padding: 6px 12px; }
+  .logo { width: 30px; height: 30px; font-size: 1.05rem; border-radius: 10px; }
+  .brand { font-size: 1rem; gap: 8px; }
+  .icon-btn { width: 34px; height: 34px; font-size: 1rem; border-radius: 11px; margin-left: 6px; }
+  .game { padding: 2px 12px 12px; }
+  .card { padding: 14px; margin-bottom: 10px; border-radius: 16px; }
+  .btn { padding: 12px 16px; font-size: 1rem; border-radius: 14px; box-shadow: 0 4px 0 rgba(0, 0, 0, .18); }
+  .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0, 0, 0, .18); }
+  .stack > * + * { margin-top: 10px; }
+
+  .qhead { margin-bottom: 4px; font-size: .9rem; }
+  .timer-bar { height: 8px; margin-bottom: 8px; }
+  .timer-num { font-size: 1.2rem; }
+  .question { font-size: clamp(1.05rem, 4.8vw, 1.4rem); margin: 4px 0 10px; line-height: 1.25; }
+  .media { max-height: 20vh; margin-bottom: 8px; border-radius: 12px; }
+  iframe.media { max-height: 22vh; }
+
+  .answers { gap: 8px; }
+  .answers.vf { grid-template-columns: 1fr 1fr; }
+  .answer { min-height: 50px; padding: 8px 12px; gap: 10px; border-radius: 14px; font-size: 1rem; line-height: 1.2;
+    box-shadow: 0 3px 0 rgba(0, 0, 0, .22); }
+  .answer:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 0, 0, .22); }
+  .answer .letter { width: 30px; height: 30px; border-radius: 9px; font-size: .9rem; }
+  .answer.right { box-shadow: 0 0 0 3px var(--ok), 0 0 14px var(--ok); }
+  .answer.mine { outline-width: 3px; }
+  .free-form input { font-size: 1.05rem; padding: 10px 12px; }
+
+  .banner { padding: 10px 12px; margin-bottom: 8px; border-radius: 16px; font-size: .95rem; }
+  .banner .big { font-size: 1.35rem; }
+  .explain { padding: 8px 12px; margin: 8px 0; font-size: .9rem; border-left-width: 4px; }
+  .correct-box { padding: 8px 12px; margin: 6px 0; }
+  .board li { padding: 5px 4px; gap: 8px; font-size: .92rem; }
+  .card h2 { font-size: 1.05rem; margin-bottom: .3em; }
+
+  /* Correction : on masque le média (déjà vu) et on ne garde que le haut du classement ; le rang du joueur est dans le titre. */
+  .game[data-phase="reveal"] .media { display: none; }
+  .game[data-phase="reveal"] .question { font-size: clamp(.95rem, 4.2vw, 1.15rem); margin-bottom: 6px; }
+  .game[data-phase="reveal"] .board li:nth-child(n+4) { display: none; }
+  .game[data-phase="reveal"] .question { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .game[data-phase="reveal"] .banner { padding: 7px 10px; margin-bottom: 6px; }
+  .game[data-phase="reveal"] .banner .big { font-size: 1.15rem; }
+  .game[data-phase="reveal"] .answers { gap: 5px; }
+  .game[data-phase="reveal"] .answer { min-height: 36px; padding: 4px 10px; font-size: .9rem; border-radius: 11px; box-shadow: 0 2px 0 rgba(0, 0, 0, .22); }
+  .game[data-phase="reveal"] .answer .letter { width: 24px; height: 24px; font-size: .8rem; border-radius: 7px; }
+  .game[data-phase="reveal"] .explain { padding: 6px 10px; margin: 6px 0; font-size: .85rem; }
+  .game[data-phase="reveal"] .banner.wait { padding: 5px 10px; margin: 6px 0 !important; font-size: .85rem; }
+  .game[data-phase="reveal"] .btn { padding: 9px 14px; }
+  .game[data-phase="reveal"] p { margin: 4px 0; font-size: .92rem; }
+  .game[data-phase="reveal"] .card { padding: 10px; margin-bottom: 6px; }
+}

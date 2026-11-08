@@ -43,6 +43,7 @@ function render(s) {
 }
 
 function renderLobby(s) {
+  stage.dataset.phase = 'lobby';
   fill(stage, h('div', { class: 'card center stack' },
     h('h1', {}, `Prêt(e), ${player.name} ? 🎉`), h('p', { class: 'muted' }, s.title),
     s.start_in_ms != null ? null : h('div', { class: 'banner wait' }, 'En attente du lancement par l’organisateur…'),
@@ -52,6 +53,7 @@ function renderLobby(s) {
 }
 
 function renderQuestion(s) {
+  stage.dataset.phase = 'question';
   const q = s.question, head = questionHeader(q);
   playTimer = head.timer;
   const done = s.has_answered;
@@ -64,6 +66,7 @@ function renderQuestion(s) {
 }
 
 function renderReveal(s, changed) {
+  stage.dataset.phase = 'reveal';
   const q = s.question, r = s.reveal, me = s.me;
   if (changed) { Sound.play(me.correct ? 'correct' : 'wrong'); flash(me.correct ? 'good' : 'bad'); if (me.correct) navigator.vibrate?.(80); }
   const banner = me.correct

@@ -51,6 +51,7 @@ async function next() {
 }
 
 function showQuestion(r) {
+  stage.dataset.phase = 'question';
   const q = r.question, head = questionHeader(q);
   timer = head.timer;
   let done = false;
@@ -73,6 +74,7 @@ async function send(q, value) {
   } catch (e) { if (e.status !== 409) toast(e.message); return next(); }
   Sound.play(r.correct ? 'correct' : 'wrong'); flash(r.correct ? 'good' : 'bad');
   if (r.correct) navigator.vibrate?.(80);
+  stage.dataset.phase = 'reveal';
   let moved = false;
   const go = () => { if (moved) return; moved = true; stopTimers(); next(); };
   fill(stage,

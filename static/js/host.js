@@ -56,6 +56,7 @@ function render(s) {
 }
 
 function renderLobby(s) {
+  stage.dataset.phase = 'lobby';
   fill(stage, h('div', { class: 'card stack' },
     h('h1', { class: 'center' }, s.title),
     h('div', { class: 'lobby-grid' },
@@ -75,6 +76,7 @@ function renderLobby(s) {
 }
 
 function renderQuestion(s) {
+  stage.dataset.phase = 'question';
   const q = s.question, head = questionHeader(q);
   hostTimer = head.timer;
   fill(stage, head.node, ...questionBlock(q),
@@ -86,6 +88,7 @@ function renderQuestion(s) {
 }
 
 function renderReveal(s) {
+  stage.dataset.phase = 'reveal';
   const q = s.question, r = s.reveal;
   fill(stage, h('div', { class: 'qhead' }, h('span', {}, `Question ${q.index + 1} / ${q.total}`)),
     ...questionBlock(q),

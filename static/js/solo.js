@@ -31,6 +31,7 @@ function showTurn() {
 }
 
 function showQuestion() {
+  stage.dataset.phase = 'question';
   const q = { ...qOf(step), index: Math.floor(step / nP()), total: info.questions.length };
   const head = questionHeader(q); timer = head.timer;
   const t0 = performance.now();
@@ -53,6 +54,7 @@ async function send(value, elapsed) {
   catch (e) { toast(e.message); if (e.status === 409) { p.done.push(qi); step++; } return advance(); }
   p.score = r.score; p.done.push(qi);
   Sound.play(r.correct ? 'correct' : 'wrong'); flash(r.correct ? 'good' : 'bad');
+  stage.dataset.phase = 'reveal';
   const q = qOf(step);
   const nextP = step + 1 < total() ? who(step + 1) : null;
   const sameQ = Math.floor((step + 1) / nP()) === qi;
