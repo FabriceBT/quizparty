@@ -85,7 +85,7 @@ async function send(q, value) {
     explanationNode(r.explanation),
     h('p', { class: 'center' }, `${r.score} points · ${r.rank}${r.rank === 1 ? 'er' : 'e'} sur ${r.of} pour l’instant`),
     countdownNode(AFTER_MS, r.finished ? 'Résultats' : 'Question suivante'),
-    h('button', { class: 'btn green', onclick: go }, r.finished ? '🏆 Voir le classement' : 'Continuer ➜'));
+    h('button', { class: 'btn green next', onclick: go }, r.finished ? '🏆 Voir le classement' : 'Continuer ➜'));
   pending = setTimeout(go, AFTER_MS);
 }
 

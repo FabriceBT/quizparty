@@ -101,7 +101,7 @@ function confetti(ms = 4000) {
   const ctx = cv.getContext('2d'), dpr = devicePixelRatio || 1;
   const size = () => { cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; };
   size();
-  const colors = ['#6c4cf5', '#ff5ca8', '#ffd34d', '#17a864', '#3b82f6', '#f0a020'];
+  const colors = ['#7c3aed', '#ff4d8d', '#fbbf24', '#10b981', '#22d3ee', '#ff7a1a', '#c026d3'];
   const bits = Array.from({ length: 160 }, () => ({
     x: Math.random() * cv.width, y: -Math.random() * cv.height * .6, r: (4 + Math.random() * 7) * dpr,
     vx: (Math.random() - .5) * 3 * dpr, vy: (2 + Math.random() * 4) * dpr, a: Math.random() * 6, va: (Math.random() - .5) * .3,

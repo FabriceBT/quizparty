@@ -65,7 +65,7 @@ async function send(value, elapsed) {
     q.kind === 'libre' ? null : answerButtons(q, { correct: r.correct_index, mine: typeof value === 'number' ? value : null }),
     explanationNode(r.explanation),
     h('p', { class: 'center' }, `${p.name} : ${r.score} points`),
-    h('button', { class: 'btn green', onclick: () => { step++; advance(); } },
+    h('button', { class: 'btn green next', onclick: () => { step++; advance(); } },
       !nextP ? '🏆 Voir le podium' : sameQ ? `📱 Passer le téléphone à ${nextP.name}` : 'Question suivante ➜'));
 }
 

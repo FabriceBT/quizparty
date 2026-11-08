@@ -98,7 +98,7 @@ function renderReveal(s) {
     explanationNode(r.explanation),
     h('div', { class: 'card' }, h('h2', {}, '🏅 Classement'), leaderboardNode(s.leaderboard)),
     r.next_in_ms != null ? countdownNode(r.next_in_ms, r.is_last ? 'Podium' : 'Question suivante') : null,
-    h('button', { class: 'btn green', onclick: () => send('next') }, r.is_last ? '🏆 Voir le podium' : 'Question suivante ➜'),
+    h('button', { class: 'btn green next', onclick: () => send('next') }, r.is_last ? '🏆 Voir le podium' : 'Question suivante ➜'),
     autoControl(s));
 }
 
