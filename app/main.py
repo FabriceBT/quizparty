@@ -23,7 +23,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 
 from . import db, services
-from .config import BASE_DIR, MAX_UPLOAD_MB, MEDIA_DIR
+from .config import BASE_DIR, MAX_UPLOAD_MB, MEDIA_DIR, ASSET_VERSION
 from .game import Game, GameError, manager
 from .backup import router as backup_router
 from .library import router as library_router
@@ -55,6 +55,7 @@ async def static_revalidate(request, call_next):
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+templates.env.globals["asset_v"] = ASSET_VERSION
 app.include_router(open_router)
 app.include_router(library_router)
 app.include_router(backup_router)

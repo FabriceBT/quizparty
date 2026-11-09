@@ -3,4 +3,4 @@
 {% block body %}
 <main class="game" id="stage" data-code="{{ code }}"><p class="muted center">Chargement…</p></main>
 {% endblock %}
-{% block scripts %}<script src="/static/js/play.js"></script>{% endblock %}
+{% block scripts %}<script src="/static/js/play.js?v={{ asset_v }}"></script>{% endblock %}

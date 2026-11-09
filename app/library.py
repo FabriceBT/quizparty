@@ -20,11 +20,12 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 
 from . import db
-from .config import BASE_DIR, LIBRARY_WEEKLY
+from .config import BASE_DIR, LIBRARY_WEEKLY, ASSET_VERSION
 from .openmode import OPEN_MAX_PLAYERS
 
 router = APIRouter()
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+templates.env.globals["asset_v"] = ASSET_VERSION
 LIBRARY = "library"          # valeur de host_key qui marque une partie de bibliothèque
 
 

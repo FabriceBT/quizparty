@@ -3,4 +3,4 @@
 {% block body %}
 <main class="wrap" id="app" data-code="{{ code }}"><p class="muted center">Chargement…</p></main>
 {% endblock %}
-{% block scripts %}<script src="/static/js/review.js"></script>{% endblock %}
+{% block scripts %}<script src="/static/js/review.js?v={{ asset_v }}"></script>{% endblock %}

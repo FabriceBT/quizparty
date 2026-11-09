@@ -20,3 +20,6 @@ MAX_PLAYERS = 200
 
 # Bibliothèque en libre-service : le classement de chaque quiz repart de zéro chaque lundi (QUIZ_LIBRARY_WEEKLY=0 pour le garder en permanence).
 LIBRARY_WEEKLY = os.environ.get("QUIZ_LIBRARY_WEEKLY", "1") != "0"
+
+# Version des fichiers JS/CSS (ajoutée aux adresses « ?v=… ») : un téléphone ne peut plus mélanger d'anciens et de nouveaux fichiers.
+ASSET_VERSION = str(max((int(f.stat().st_mtime) for f in (BASE_DIR / "static").rglob("*") if f.suffix in (".js", ".css")), default=0))

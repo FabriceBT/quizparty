@@ -275,3 +275,10 @@ def test_sauvegarde_et_restauration(client):
 def test_service_worker(client):
     r = client.get("/sw.js")
     assert r.status_code == 200 and "javascript" in r.headers["content-type"] and r.headers["service-worker-allowed"] == "/"
+
+
+def test_fichiers_statiques_versionnes(client):
+    """Les pages référencent les JS/CSS avec ?v=… pour qu'un téléphone n'utilise jamais un ancien fichier en cache."""
+    for url in ("/play", "/j/123456", "/results/x", "/library"):
+        html = client.get(url).text
+        assert "/static/css/app.css?v=" in html and "/static/js/common.js?v=" in html, url
