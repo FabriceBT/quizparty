@@ -14,8 +14,9 @@ from fastapi import WebSocket
 
 from . import db
 from .config import MAX_PLAYERS
-from .scoring import (compute_points, correct_text, given_text, is_correct,
-                      rank_of)
+from .schemas import TEAMS
+from .scoring import (JOKER_FACTOR, clean_value, compute_points, correct_text,
+                      given_text, is_correct, joker_hidden, rank_of, reveal_extra, shown_choices, streak_bonus)
 
 GRACE_S = 0.4   # tolérance réseau après la fin du chrono
 AUTO_DELAY_MIN, AUTO_DELAY_MAX, AUTO_DELAY_DEFAULT = 1, 60, 8   # pause (s) entre la révélation et la question suivante
@@ -58,15 +59,17 @@ class Game:
         self.phase = "lobby"
         self.q_index = -1
         self.deadline = 0.0
-        self.players: dict[int, dict] = {}     # pid -> {name, token, score}
+        self.players: dict[int, dict] = {}     # pid -> {name, token, score, team, streak}
         self.current: dict[int, dict] = {}     # réponses de la question en cours
+        self.joker_used: set[int] = set()      # joueurs ayant déjà utilisé leur joker 50/50 (un seul par partie)
+        self.hidden: dict[int, list[int]] = {} # joueur -> réponses masquées par le joker sur la question en cours
         self.hosts: set[WebSocket] = set()
         self.sockets: dict[int, set[WebSocket]] = {}
         self.timer: asyncio.Task | None = None
         self.finished_at = 0.0
 
     # ------------------------------------------------------------ joueurs
-    def add_player(self, name: str) -> tuple[int, str]:
+    def add_player(self, name: str, team: str = "") -> tuple[int, str]:
         name = " ".join(name.split())[:20]
         if not name:
             raise GameError("Entrez un prénom.")
@@ -76,13 +79,14 @@ class Game:
             raise GameError("La partie est complète.")
         if any(p["name"].lower() == name.lower() for p in self.players.values()):
             raise GameError("Ce prénom est déjà pris, ajoutez une initiale.")
+        team = team if team in TEAMS else ""
         token = secrets.token_urlsafe(16)
         with db.SessionLocal() as s:
-            pl = db.Player(session_id=self.session_id, name=name, token=token)
+            pl = db.Player(session_id=self.session_id, name=name, token=token, team=team)
             s.add(pl)
             s.commit()
             pid = pl.id
-        self.players[pid] = {"name": name, "token": token, "score": 0}
+        self.players[pid] = {"name": name, "token": token, "score": 0, "team": team, "streak": 0}
         self._maybe_schedule_start()
         return pid, token
 
@@ -200,24 +204,34 @@ class Game:
         if now > self.deadline + GRACE_S:
             return
         q = self.questions[self.q_index]
-        value = msg.get("value")
-        if q["kind"] == "libre":
-            if not isinstance(value, str) or not value.strip():
-                return
-            value = value.strip()[:100]
-        else:
-            if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value < len(q["choices"]):
-                return
+        value = clean_value(q, msg.get("value"))
+        if value is None or (isinstance(value, int) and value in self.hidden.get(pid, ())):
+            return
         elapsed_ms = int((q["time_limit"] - max(self.deadline - now, 0)) * 1000)
         ok = is_correct(q, value)
+        base = compute_points(ok, q["time_limit"], elapsed_ms)
+        if ok and pid in self.hidden:                      # joker utilisé : la bonne réponse vaut moitié moins
+            base = round(base * JOKER_FACTOR)
+        streak = self.players[pid]["streak"] + 1 if ok else 0
+        bonus = streak_bonus(streak) if ok else 0
         self.current[pid] = {"value": value, "text": given_text(q, value), "correct": ok,
-                             "points": compute_points(ok, q["time_limit"], elapsed_ms),
-                             "elapsed": elapsed_ms}
+                             "points": base + bonus, "bonus": bonus, "streak": streak, "elapsed": elapsed_ms}
         if len(self.current) >= len(self.players):
             await self._reveal()
         else:
             await self.broadcast(only_hosts=True)
             await self._send_to_player(pid)
+
+    async def on_joker(self, pid: int):
+        """Joker 50/50 : masque la moitié des mauvaises réponses d'un QCM. Un seul par joueur et par partie."""
+        if self.phase != "question" or pid in self.current or pid in self.joker_used:
+            return
+        hidden = joker_hidden(self.questions[self.q_index], pid)
+        if not hidden:
+            return
+        self.joker_used.add(pid)
+        self.hidden[pid] = hidden
+        await self._send_to_player(pid)
 
     async def _send_to_player(self, pid: int):
         for ws in list(self.sockets.get(pid, ())):
@@ -234,6 +248,7 @@ class Game:
         q = self.questions[self.q_index]
         self.phase = "question"
         self.current = {}
+        self.hidden = {}
         self.deadline = time.monotonic() + q["time_limit"]
         with db.SessionLocal() as s:
             gs = s.get(db.GameSession, self.session_id)
@@ -259,9 +274,10 @@ class Game:
         q = self.questions[self.q_index]
         with db.SessionLocal() as s:
             for pid, p in self.players.items():
-                a = self.current.setdefault(pid, {"value": None, "text": "", "correct": False,
-                                                  "points": 0, "elapsed": q["time_limit"] * 1000})
+                a = self.current.setdefault(pid, {"value": None, "text": "", "correct": False, "points": 0,
+                                                  "bonus": 0, "streak": 0, "elapsed": q["time_limit"] * 1000})
                 p["score"] += a["points"]
+                p["streak"] = a["streak"]
                 s.add(db.Answer(player_id=pid, question_id=q["id"], value=a["text"],
                                 correct=a["correct"], points=a["points"], elapsed_ms=a["elapsed"]))
                 s.get(db.Player, pid).score = p["score"]
@@ -284,25 +300,37 @@ class Game:
     # ---------------------------------------------------------- instantané
     def _leaderboard(self) -> list[dict]:
         scores = [p["score"] for p in self.players.values()]
-        rows = [{"pid": pid, "name": p["name"], "score": p["score"],
+        rows = [{"pid": pid, "name": p["name"], "score": p["score"], "team": p["team"],
                  "rank": rank_of(p["score"], scores),
                  "gained": self.current.get(pid, {}).get("points", 0) if self.phase == "reveal" else 0}
                 for pid, p in self.players.items()]
         rows.sort(key=lambda r: (r["rank"], r["name"].lower()))
         return rows
 
+    def teams_board(self) -> list[dict]:
+        """Classement des équipes : moyenne de points par joueur (équitable si les équipes sont inégales)."""
+        out = []
+        for key, label in TEAMS.items():
+            members = [p["score"] for p in self.players.values() if p["team"] == key]
+            if members:
+                out.append({"team": key, "label": label, "players": len(members), "total": sum(members),
+                            "avg": round(sum(members) / len(members))})
+        out.sort(key=lambda t: -t["avg"])
+        return out
+
     def snapshot(self, role: str, pid: int | None = None) -> dict:
         snap = {"type": "state", "phase": self.phase, "code": self.code, "title": self.title,
                 "player_count": len(self.players),
                 "players": [p["name"] for p in self.players.values()],
-                "auto": self.auto, "auto_delay": self.auto_delay, "auto_start": self.auto_start}
+                "auto": self.auto, "auto_delay": self.auto_delay, "auto_start": self.auto_start,
+                "teams": self.teams_board()}
         if self.phase == "lobby" and self.auto and self.start_at:
             snap["start_in_ms"] = max(int((self.start_at - time.monotonic()) * 1000), 0)
         if self.phase in ("question", "reveal"):
             q = self.questions[self.q_index]
             snap["question"] = {"index": self.q_index, "total": len(self.questions),
                                 "kind": q["kind"], "text": q["text"], "media_type": q["media_type"],
-                                "media_url": q["media_url"], "choices": q["choices"],
+                                "media_url": q["media_url"], "choices": shown_choices(q),
                                 "time_limit": q["time_limit"]}
         if self.phase == "question":
             snap["remaining_ms"] = max(int((self.deadline - time.monotonic()) * 1000), 0)
@@ -311,26 +339,32 @@ class Game:
                 snap["has_answered"] = pid in self.current
                 if pid in self.current:
                     snap["my_value"] = self.current[pid]["value"]
+                snap["streak"] = self.players[pid]["streak"] if pid in self.players else 0
+                snap["hidden"] = self.hidden.get(pid, [])
+                snap["joker_available"] = (pid not in self.joker_used and not snap["has_answered"]
+                                           and bool(joker_hidden(q, pid)))
         if self.phase == "reveal":
             q = self.questions[self.q_index]
             dist = None
-            if q["kind"] != "libre":
+            if q["kind"] in ("qcm", "vf"):
                 dist = [0] * len(q["choices"])
                 for a in self.current.values():
                     if isinstance(a["value"], int):
                         dist[a["value"]] += 1
             board = self._leaderboard()
-            snap["reveal"] = {"correct_index": q["correct"], "correct_text": correct_text(q),
+            extra = reveal_extra(q)
+            snap["reveal"] = {**extra, "correct_index": q["correct"], "correct_text": correct_text(q),
                               "explanation": q["explanation"], "distribution": dist,
                               "right_count": sum(1 for a in self.current.values() if a["correct"]),
                               "is_last": self.q_index == len(self.questions) - 1,
                               "next_in_ms": (max(int((self.next_at - time.monotonic()) * 1000), 0)
                                              if self.auto and self.next_at else None)}
-            snap["leaderboard"] = [{k: r[k] for k in ("name", "score", "rank", "gained")} for r in board[:5]]
+            snap["leaderboard"] = [{k: r[k] for k in ("name", "score", "rank", "gained", "team")} for r in board[:5]]
             if role == "player" and pid in self.players:
-                a = self.current.get(pid, {"correct": False, "points": 0, "text": ""})   # arrivé pendant la révélation
+                a = self.current.get(pid, {"correct": False, "points": 0, "text": "", "value": None})   # arrivé pendant la révélation
                 me = next(r for r in board if r["pid"] == pid)
                 snap["me"] = {"correct": a["correct"], "points": a["points"], "given": a["text"],
+                              "value": a.get("value"), "bonus": a.get("bonus", 0), "streak": a.get("streak", 0),
                               "score": me["score"], "rank": me["rank"], "of": len(board)}
         if self.phase == "finished":
             snap["results_url"] = f"/results/{self.code}"

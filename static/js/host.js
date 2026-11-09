@@ -80,7 +80,8 @@ function renderQuestion(s) {
   const q = s.question, head = questionHeader(q);
   hostTimer = head.timer;
   fill(stage, head.node, ...questionBlock(q),
-    q.kind === 'libre' ? h('div', { class: 'card center muted' }, '✍️ Les joueurs tapent leur réponse sur leur téléphone') : answerButtons(q),
+    q.kind === 'libre' ? h('div', { class: 'card center muted' }, '✍️ Les joueurs tapent leur réponse sur leur téléphone')
+      : q.kind === 'point' ? pointNode(q) : answerButtons(q),
     h('p', { class: 'center muted' }, `${s.answered} / ${s.player_count} réponse${s.answered > 1 ? 's' : ''}`),
     h('button', { class: 'btn ghost', onclick: () => send('skip') }, 'Afficher la réponse maintenant'),
     autoControl(s));
@@ -93,10 +94,10 @@ function renderReveal(s) {
   fill(stage, h('div', { class: 'qhead' }, h('span', {}, `Question ${q.index + 1} / ${q.total}`)),
     ...questionBlock(q),
     q.kind === 'libre' ? h('div', { class: 'correct-box center' }, '✔ ', r.correct_text) :
-      answerButtons(q, { correct: r.correct_index, dist: r.distribution }),
+      revealNode(q, r, null, { dist: r.distribution }),
     h('div', { class: 'banner wait', style: 'margin-top:16px' }, `${r.right_count} bonne${r.right_count > 1 ? 's' : ''} réponse${r.right_count > 1 ? 's' : ''} sur ${s.player_count}`),
     explanationNode(r.explanation),
-    h('div', { class: 'card' }, h('h2', {}, '🏅 Classement'), leaderboardNode(s.leaderboard)),
+    h('div', { class: 'card' }, h('h2', {}, '🏅 Classement'), leaderboardNode(s.leaderboard)), teamsNode(s.teams),
     r.next_in_ms != null ? countdownNode(r.next_in_ms, r.is_last ? 'Podium' : 'Question suivante') : null,
     h('button', { class: 'btn green next', onclick: () => send('next') }, r.is_last ? '🏆 Voir le podium' : 'Question suivante ➜'),
     autoControl(s));

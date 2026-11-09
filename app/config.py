@@ -17,3 +17,6 @@ DB_URL = os.environ.get("QUIZ_DB_URL", f"sqlite:///{(DATA_DIR / 'quizparty.db').
 MAX_UPLOAD_MB = int(os.environ.get("QUIZ_MAX_UPLOAD_MB", "50"))
 
 MAX_PLAYERS = 200
+
+# Bibliothèque en libre-service : le classement de chaque quiz repart de zéro chaque lundi (QUIZ_LIBRARY_WEEKLY=0 pour le garder en permanence).
+LIBRARY_WEEKLY = os.environ.get("QUIZ_LIBRARY_WEEKLY", "1") != "0"

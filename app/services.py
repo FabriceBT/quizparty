@@ -9,6 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import db
+from .config import LIBRARY_WEEKLY
+from .schemas import TEAMS
 from .scoring import correct_text, rank_of
 
 
@@ -24,10 +26,17 @@ def results(s: Session, gs: db.GameSession) -> dict:
         good = sum(1 for a in p.answers if a.correct)
         rows.append({"name": p.name, "score": p.score, "correct": good, "total": total,
                      "pct": round(100 * good / total) if total else 0, "answered": len(p.answers),
-                     "rank": rank_of(p.score, scores)})
+                     "rank": rank_of(p.score, scores), "team": p.team})
     rows.sort(key=lambda r: (r["rank"], r["name"].lower()))
-    return {"code": gs.code, "title": gs.quiz.title, "mode": gs.mode, "status": gs.status, "library": gs.host_key == "library",
-            "date": gs.created_at.isoformat(), "total_questions": total, "players": rows}
+    teams = []
+    for key, label in TEAMS.items():
+        members = [r["score"] for r in rows if r["team"] == key]
+        if members:
+            teams.append({"team": key, "label": label, "players": len(members), "total": sum(members),
+                          "avg": round(sum(members) / len(members))})
+    teams.sort(key=lambda t: -t["avg"])
+    return {"code": gs.code, "title": gs.quiz.title, "mode": gs.mode, "status": gs.status, "library": gs.host_key == "library", "weekly": gs.host_key == "library" and LIBRARY_WEEKLY,
+            "date": gs.created_at.isoformat(), "total_questions": total, "players": rows, "teams": teams}
 
 
 def review(s: Session, gs: db.GameSession) -> dict:

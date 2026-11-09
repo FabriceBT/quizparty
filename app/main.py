@@ -25,10 +25,12 @@ from sqlalchemy import select
 from . import db, services
 from .config import BASE_DIR, MAX_UPLOAD_MB, MEDIA_DIR
 from .game import Game, GameError, manager
+from .backup import router as backup_router
 from .library import router as library_router
-from .openmode import open_session, router as open_router
+from .pwa import router as pwa_router
+from .openmode import open_session, router as open_router, streak_of
 from .schemas import JoinIn, QuizIn, SessionIn
-from .scoring import compute_points, correct_text, given_text, is_correct
+from .scoring import JOKER_FACTOR, clean_value, joker_hidden, reveal_extra, streak_bonus, compute_points, correct_text, given_text, is_correct
 from .seed import create_quiz, seed_demo_if_empty
 
 
@@ -55,6 +57,8 @@ app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 app.include_router(open_router)
 app.include_router(library_router)
+app.include_router(backup_router)
+app.include_router(pwa_router)
 
 
 def get_db():
@@ -255,7 +259,7 @@ def qr_svg(request: Request, code: str):
 
 # ------------------------------------------------------------------ API quiz
 def quiz_summary(q: db.Quiz) -> dict:
-    return {"id": q.id, "title": q.title, "description": q.description,
+    return {"id": q.id, "title": q.title, "description": q.description, "category": q.category,
             "questions": len(q.questions), "created_at": q.created_at.isoformat()}
 
 
@@ -267,7 +271,7 @@ def list_quizzes(s=Depends(get_db)):
 @app.get("/api/quizzes/{quiz_id}", dependencies=[Depends(admin_required)])
 def get_quiz(quiz_id: int, s=Depends(get_db)):
     q = quiz_or_404(s, quiz_id)
-    return {"id": q.id, "title": q.title, "description": q.description,
+    return {"id": q.id, "title": q.title, "description": q.description, "category": q.category,
             "questions": [x.to_dict() for x in q.questions]}
 
 
@@ -279,7 +283,7 @@ def post_quiz(data: QuizIn, s=Depends(get_db)):
 @app.put("/api/quizzes/{quiz_id}", dependencies=[Depends(admin_required)])
 def put_quiz(quiz_id: int, data: QuizIn, s=Depends(get_db)):
     quiz = quiz_or_404(s, quiz_id)
-    quiz.title, quiz.description = data.title, data.description
+    quiz.title, quiz.description, quiz.category = data.title, data.description, data.category
     # Les questions sont recréées ; les anciennes parties gardent leur historique
     # uniquement tant que le quiz n'est pas modifié : on conserve donc les ids existants.
     old = list(quiz.questions)
@@ -302,7 +306,7 @@ def put_quiz(quiz_id: int, data: QuizIn, s=Depends(get_db)):
 @app.post("/api/quizzes/{quiz_id}/duplicate", dependencies=[Depends(admin_required)])
 def duplicate_quiz(quiz_id: int, s=Depends(get_db)):
     src = quiz_or_404(s, quiz_id)
-    data = QuizIn(title=f"{src.title} (copie)"[:80], description=src.description,
+    data = QuizIn(title=f"{src.title} (copie)"[:80], description=src.description, category=src.category,
                   questions=[x.to_dict() for x in src.questions])
     return {"id": create_quiz(s, data).id}
 
@@ -387,7 +391,7 @@ async def join(data: JoinIn):
     if not game:
         raise HTTPException(404, "Code inconnu ou partie expirée.")
     try:
-        pid, token = game.add_player(data.name)
+        pid, token = game.add_player(data.name, data.team)
     except GameError as e:
         raise HTTPException(400, str(e))
     await game.broadcast(only_hosts=True)
@@ -438,6 +442,9 @@ def delete_session(code: str, s=Depends(get_db)):
 
 
 # ------------------------------------------------------------------ mode « un seul téléphone »
+_solo_joker: dict[int, int] = {}      # joueur -> question sur laquelle il a utilisé son joker 50/50
+
+
 @app.get("/api/solo/{code}")
 def solo_info(code: str, s=Depends(get_db)):
     gs = session_or_404(s, code)
@@ -445,7 +452,7 @@ def solo_info(code: str, s=Depends(get_db)):
         raise HTTPException(404, "Partie introuvable.")
     qindex = {q.id: i for i, q in enumerate(gs.quiz.questions)}
     return {"title": gs.quiz.title, "status": gs.status,
-            "players": [{"id": p.id, "name": p.name, "score": p.score,
+            "players": [{"id": p.id, "name": p.name, "score": p.score, "joker": p.id not in _solo_joker, "streak": streak_of(p, list(gs.quiz.questions), len(p.answers)),
                          "done": sorted(qindex[a.question_id] for a in p.answers)} for p in gs.players],
             "questions": [q.to_dict(with_answer=False) for q in gs.quiz.questions]}
 
@@ -462,20 +469,46 @@ async def solo_answer(code: str, request: Request, s=Depends(get_db)):
     q = qs[idx]
     if any(a.question_id == q.id for a in player.answers):
         raise HTTPException(409, "Déjà répondu.")
-    d, value = q.to_dict(), body.get("value")
-    if d["kind"] != "libre" and (not isinstance(value, int) or not 0 <= value < len(d["choices"])):
-        value = None
+    d = q.to_dict()
+    value = clean_value(d, body.get("value"))
+    used = _solo_joker.get(player.id) == idx
+    if isinstance(value, int) and used and value in joker_hidden(d, player.id):
+        value = None                                   # réponse masquée par le joker
     ok = is_correct(d, value)
     full = d["time_limit"] * 1000
     raw = body.get("elapsed_ms")
     elapsed = min(max(int(raw), 0), full) if value is not None and isinstance(raw, (int, float)) else full
     pts = compute_points(ok, d["time_limit"], elapsed)
+    if ok and used:
+        pts = round(pts * JOKER_FACTOR)
+    streak = streak_of(player, list(qs), idx) + 1 if ok else 0
+    bonus = streak_bonus(streak) if ok else 0
+    pts += bonus
     s.add(db.Answer(player_id=player.id, question_id=q.id, value=given_text(d, value), correct=ok,
                     points=pts, elapsed_ms=elapsed))
     player.score += pts
     s.commit()
     return {"correct": ok, "points": pts, "score": player.score, "correct_text": correct_text(d),
-            "correct_index": d["correct"], "explanation": d["explanation"]}
+            "correct_index": d["correct"], "explanation": d["explanation"], "bonus": bonus, "streak": streak,
+            **reveal_extra(d)}
+
+
+@app.post("/api/solo/{code}/joker")
+async def solo_joker(code: str, request: Request, s=Depends(get_db)):
+    """Joker 50/50 d'un joueur (un seul par partie) : renvoie les réponses à masquer."""
+    gs = session_or_404(s, code)
+    body = await request.json()
+    player = next((p for p in gs.players if p.id == body.get("player_id")), None)
+    qs, idx = gs.quiz.questions, body.get("question_index")
+    if gs.mode != "solo" or not player or not isinstance(idx, int) or not 0 <= idx < len(qs):
+        raise HTTPException(400, "Joker impossible.")
+    if _solo_joker.get(player.id, idx) != idx:
+        raise HTTPException(409, "Joker déjà utilisé.")
+    hidden = joker_hidden(qs[idx].to_dict(), player.id)
+    if not hidden:
+        raise HTTPException(400, "Pas de joker sur cette question.")
+    _solo_joker[player.id] = idx
+    return {"hidden": hidden}
 
 
 @app.post("/api/solo/{code}/finish")
@@ -519,6 +552,8 @@ async def ws_play(ws: WebSocket, code: str, token: str = ""):
             msg = await ws.receive_json()
             if isinstance(msg, dict) and msg.get("type") == "answer":
                 await game.on_answer(pid, msg)
+            elif isinstance(msg, dict) and msg.get("type") == "joker":
+                await game.on_joker(pid)
     except (WebSocketDisconnect, RuntimeError, ValueError):
         pass
     finally:

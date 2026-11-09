@@ -25,6 +25,7 @@ class Quiz(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(80))
     description: Mapped[str] = mapped_column(String(300), default="")
+    category: Mapped[str] = mapped_column(String(30), default="", server_default="")        # rubrique dans la bibliothèque
     published: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")   # visible dans la bibliothèque des téléphones
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     questions: Mapped[list["Question"]] = relationship(
@@ -38,7 +39,7 @@ class Question(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     quiz_id: Mapped[int] = mapped_column(ForeignKey("quizzes.id", ondelete="CASCADE"))
     position: Mapped[int] = mapped_column(Integer, default=0)
-    kind: Mapped[str] = mapped_column(String(10))          # qcm | vf | libre
+    kind: Mapped[str] = mapped_column(String(10))          # qcm | vf | libre | ordre | point
     text: Mapped[str] = mapped_column(String(300))
     media_type: Mapped[str] = mapped_column(String(10), default="none")  # none|image|video|audio
     media_url: Mapped[str] = mapped_column(String(500), default="")
@@ -58,9 +59,12 @@ class Question(Base):
         return json.loads(self.accepted_json)
 
     def to_dict(self, with_answer: bool = True) -> dict:
+        from .scoring import shown_choices
         d = {"id": self.id, "kind": self.kind, "text": self.text,
              "media_type": self.media_type, "media_url": self.media_url,
              "choices": self.choices, "time_limit": self.time_limit}
+        if not with_answer:                     # « ordre » : on ne révèle pas le bon ordre aux joueurs
+            d["choices"] = shown_choices(d)
         if with_answer:
             d.update(correct=self.correct, accepted=self.accepted, explanation=self.explanation)
         return d
@@ -89,6 +93,7 @@ class Player(Base):
     name: Mapped[str] = mapped_column(String(20))
     token: Mapped[str] = mapped_column(String(40), default="")
     score: Mapped[int] = mapped_column(Integer, default=0)
+    team: Mapped[str] = mapped_column(String(10), default="", server_default="")            # rouge | bleu | vert | jaune | ""
     session: Mapped[GameSession] = relationship(back_populates="players")
     answers: Mapped[list["Answer"]] = relationship(cascade="all, delete-orphan")
 
@@ -121,11 +126,16 @@ def init_db(url: str = DB_URL):
         def _fk(dbapi_conn, _):  # clés étrangères actives sous SQLite
             dbapi_conn.execute("PRAGMA foreign_keys=ON")
     Base.metadata.create_all(_engine)
-    # Migration légère : les bases créées avant la bibliothèque n'ont pas la colonne « published ».
-    # Tous les quiz existants y sont visibles par défaut (l'organisateur peut les masquer ensuite).
+    # Migrations légères : colonnes ajoutées après la création de certaines bases (valeurs par défaut sûres).
     from sqlalchemy import inspect
-    if "published" not in {c["name"] for c in inspect(_engine).get_columns("quizzes")}:
-        with _engine.begin() as conn:
-            conn.exec_driver_sql("ALTER TABLE quizzes ADD COLUMN published BOOLEAN NOT NULL DEFAULT true")
+    insp = inspect(_engine)
+    for table, column, ddl in [
+        ("quizzes", "published", "BOOLEAN NOT NULL DEFAULT 1"),    # visible dans la bibliothèque des téléphones
+        ("quizzes", "category", "VARCHAR(30) NOT NULL DEFAULT ''"),
+        ("players", "team", "VARCHAR(10) NOT NULL DEFAULT ''"),
+    ]:
+        if column not in {c["name"] for c in insp.get_columns(table)}:
+            with _engine.begin() as conn:
+                conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
     SessionLocal.configure(bind=_engine)
     return _engine

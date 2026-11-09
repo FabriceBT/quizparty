@@ -4,6 +4,16 @@
 <main class="wrap">
   <div class="row between"><h1>📚 Mes quiz</h1><a class="btn small" href="/quizzes/new">+ Nouveau</a></div>
   <div id="list" class="stack"><p class="muted">Chargement…</p></div>
+  <section class="card stack" style="margin-top:16px">
+    <h2 style="margin:0">💾 Sauvegarde</h2>
+    <p class="muted">Un fichier ZIP avec tous vos quiz et leurs images/sons. À refaire de temps en temps, et indispensable avant de changer d’hébergement.</p>
+    <div class="grid2">
+      <a class="btn small" href="/api/backup" download>⬇️ Télécharger la sauvegarde</a>
+      <button class="btn ghost small" id="restore-btn">⬆️ Restaurer une sauvegarde</button>
+    </div>
+    <input type="file" id="restore-file" accept=".zip,application/zip" class="hidden">
+    <div id="restore-msg" class="muted center"></div>
+  </section>
   <p><a href="/">← Accueil</a></p>
 </main>
 
@@ -46,7 +56,7 @@
     for (const q of quizzes) {
       list.append(h('div', { class: 'card stack' },
         h('div', {}, h('h2', { style: 'margin:0' }, q.title),
-          h('div', { class: 'muted' }, q.description || ' '), h('span', { class: 'pill' }, `${q.questions} questions`)),
+          h('div', { class: 'muted' }, q.description || ' '), h('span', { class: 'pill' }, `${q.questions} questions`), q.category ? h('span', { class: 'pill' }, ` ${q.category}`) : null),
         h('div', { class: 'grid2' },
           h('button', { class: 'btn small', onclick: () => openMulti(q.id) }, '📱 Partie multi-téléphones'),
           h('button', { class: 'btn pink small', onclick: () => { soloQuiz = q.id; dlg.showModal(); } }, '👥 Un seul téléphone')),
@@ -57,6 +67,20 @@
           h('button', { class: 'btn ghost small', style: 'color:var(--ko)', onclick: () => del(q) }, '🗑 Supprimer'))));
     }
   }
+  $('#restore-btn').onclick = () => $('#restore-file').click();
+  $('#restore-file').onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const msg = $('#restore-msg'); msg.textContent = 'Restauration en cours…';
+    const fd = new FormData(); fd.append('file', f);
+    try {
+      const res = await fetch('/api/restore', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Restauration impossible.');
+      msg.textContent = `✔ ${data.added} quiz ajouté${data.added > 1 ? 's' : ''}, ${data.skipped} déjà présent${data.skipped > 1 ? 's' : ''}.`;
+      load();
+    } catch (err) { msg.textContent = err.message; }
+    e.target.value = '';
+  };
   async function startOpen(id) {
     try { const r = await api('/api/sessions', { method: 'POST', body: { quiz_id: id, mode: 'open' } }); location.href = r.url; }
     catch (e) { toast(e.message); }

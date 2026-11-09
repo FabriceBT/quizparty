@@ -60,7 +60,7 @@ DEMO = {
 
 
 def create_quiz(s: Session, data: QuizIn) -> db.Quiz:
-    quiz = db.Quiz(title=data.title, description=data.description)
+    quiz = db.Quiz(title=data.title, description=data.description, category=data.category)
     for i, q in enumerate(data.questions):
         quiz.questions.append(db.Question(
             position=i, kind=q.kind, text=q.text, media_type=q.media_type, media_url=q.media_url,

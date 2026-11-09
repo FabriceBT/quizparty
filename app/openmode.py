@@ -17,7 +17,9 @@ from sqlalchemy.exc import IntegrityError
 
 from . import db
 from .game import GRACE_S
-from .scoring import compute_points, correct_text, given_text, is_correct, rank_of
+from .schemas import TEAMS
+from .scoring import (JOKER_FACTOR, clean_value, compute_points, correct_text, given_text, is_correct,
+                      joker_hidden, rank_of, reveal_extra, streak_bonus, streak_before)
 
 OPEN_MAX_PLAYERS = 1000
 
@@ -25,6 +27,8 @@ router = APIRouter(prefix="/api/open")
 
 # player_id -> (index de la question affichée, time.monotonic() de son affichage)
 _started: dict[int, tuple[int, float]] = {}
+# player_id -> index de la question sur laquelle le joueur a utilisé son joker 50/50 (un seul par partie)
+_joker: dict[int, int] = {}
 
 
 def get_db():
@@ -34,12 +38,18 @@ def get_db():
 
 class JoinIn(BaseModel):
     name: str
+    team: str = ""
+
+
+class JokerIn(BaseModel):
+    token: str
+    question_index: int
 
 
 class AnswerIn(BaseModel):
     token: str
     question_index: int
-    value: int | str | None = None
+    value: int | str | list[int | float] | None = None
 
 
 def open_session(s, code: str) -> db.GameSession:
@@ -54,6 +64,12 @@ def find_player(s, gs: db.GameSession, token: str) -> db.Player:
     if not p:
         raise HTTPException(401, "Joueur inconnu : rejoignez la partie.")
     return p
+
+
+def streak_of(player: db.Player, qs: list[db.Question], idx: int) -> int:
+    """Série de bonnes réponses d'affilée juste avant la question n° idx."""
+    ok = {a.question_id: a.correct for a in player.answers}
+    return streak_before([ok.get(q.id, False) for q in qs[:idx]])
 
 
 def _record(s, player: db.Player, q: db.Question, value, correct: bool, points: int, elapsed: int):
@@ -81,7 +97,8 @@ def next_question(s, gs: db.GameSession, player: db.Player) -> tuple[int, db.Que
 @router.get("/{code}/info")
 def info(code: str, s=Depends(get_db)):
     gs = open_session(s, code)
-    return {"title": gs.quiz.title, "status": gs.status, "questions": len(gs.quiz.questions)}
+    return {"title": gs.quiz.title, "status": gs.status, "questions": len(gs.quiz.questions),
+            "library": gs.host_key == "library", "teams": TEAMS, "quiz_id": gs.quiz_id}
 
 
 @router.post("/{code}/join")
@@ -97,7 +114,7 @@ def join(code: str, data: JoinIn, s=Depends(get_db)):
     if gs.host_key != "library" and any(p.name.lower() == name.lower() for p in gs.players):   # bibliothèque : plusieurs essais possibles
         raise HTTPException(400, "Ce prénom est déjà pris, ajoutez une initiale.")
     token = secrets.token_urlsafe(16)
-    s.add(db.Player(session_id=gs.id, name=name, token=token))
+    s.add(db.Player(session_id=gs.id, name=name, token=token, team=data.team if data.team in TEAMS else ""))
     s.commit()
     return {"token": token, "name": name}
 
@@ -108,7 +125,7 @@ def question(code: str, token: str = "", s=Depends(get_db)):
     player = find_player(s, gs, token)
     total = len(gs.quiz.questions)
     idx, q = next_question(s, gs, player)
-    base = {"title": gs.quiz.title, "name": player.name, "score": player.score, "total": total}
+    base = {"title": gs.quiz.title, "name": player.name, "score": player.score, "total": total, "quiz_id": gs.quiz_id}
     if q is None:
         return {**base, "state": "done"}
     if gs.status == "finished":
@@ -117,8 +134,30 @@ def question(code: str, token: str = "", s=Depends(get_db)):
     if not started or started[0] != idx:           # première fois qu'on affiche cette question
         started = _started[player.id] = (idx, time.monotonic())
     remaining = max(int((started[1] + q.time_limit - time.monotonic()) * 1000), 0)
-    return {**base, "state": "question", "remaining_ms": remaining,
+    d = q.to_dict()
+    hidden = joker_hidden(d, player.id) if _joker.get(player.id) == idx else []
+    return {**base, "state": "question", "remaining_ms": remaining, "hidden": hidden,
+            "joker_available": player.id not in _joker and bool(joker_hidden(d, player.id)),
+            "streak": streak_of(player, list(gs.quiz.questions), idx),
             "question": {**q.to_dict(with_answer=False), "index": idx, "total": total}}
+
+
+@router.post("/{code}/joker")
+def joker(code: str, data: JokerIn, s=Depends(get_db)):
+    """Joker 50/50 : masque des mauvaises réponses (QCM de 3-4 réponses). Un seul par joueur."""
+    gs = open_session(s, code)
+    player = find_player(s, gs, data.token)
+    idx, q = next_question(s, gs, player)
+    started = _started.get(player.id)
+    if q is None or idx != data.question_index or not started or started[0] != idx:
+        raise HTTPException(409, "Cette question n'est plus en cours.")
+    if player.id in _joker and _joker[player.id] != idx:
+        raise HTTPException(409, "Joker déjà utilisé.")
+    hidden = joker_hidden(q.to_dict(), player.id)
+    if not hidden:
+        raise HTTPException(400, "Pas de joker sur cette question.")
+    _joker[player.id] = idx
+    return {"hidden": hidden}
 
 
 @router.post("/{code}/answer")
@@ -138,13 +177,17 @@ def answer(code: str, data: AnswerIn, s=Depends(get_db)):
     full = d["time_limit"] * 1000
     if elapsed_ms > full + GRACE_S * 1000:
         value = None                                 # réponse reçue après la fin du chrono
-    if d["kind"] == "libre":
-        value = value.strip()[:100] if isinstance(value, str) and value.strip() else None
-    elif not isinstance(value, int) or isinstance(value, bool) or not 0 <= value < len(d["choices"]):
-        value = None
+    value = clean_value(d, value)
+    if isinstance(value, int) and _joker.get(player.id) == idx and value in joker_hidden(d, player.id):
+        value = None                                 # réponse masquée par le joker : impossible
     ok = is_correct(d, value)
     elapsed = min(max(elapsed_ms, 0), full) if value is not None else full
     pts = compute_points(ok, d["time_limit"], elapsed)
+    if ok and _joker.get(player.id) == idx:
+        pts = round(pts * JOKER_FACTOR)              # joker utilisé : la bonne réponse vaut moitié moins
+    streak = streak_of(player, list(gs.quiz.questions), idx) + 1 if ok else 0
+    bonus = streak_bonus(streak) if ok else 0
+    pts += bonus
     try:
         _record(s, player, q, given_text(d, value), ok, pts, elapsed)
         s.commit()
@@ -154,5 +197,6 @@ def answer(code: str, data: AnswerIn, s=Depends(get_db)):
     scores = [p.score for p in gs.players]
     return {"correct": ok, "points": pts, "score": player.score, "correct_text": correct_text(d),
             "correct_index": d["correct"], "explanation": d["explanation"], "timed_out": value is None,
+            "bonus": bonus, "streak": streak, "quiz_id": gs.quiz_id, **reveal_extra(d),
             "finished": idx + 1 >= len(gs.quiz.questions),
             "rank": rank_of(player.score, scores), "of": len(scores)}

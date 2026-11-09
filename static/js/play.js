@@ -6,10 +6,11 @@ function showJoin(message) {
   const name = h('input', { type: 'text', maxlength: 20, placeholder: 'Votre prénom', autocomplete: 'given-name',
     value: localStorage.getItem('qp_name') || '' });
   const err = h('div', { class: 'error' }, message || '');
+  const team = teamPicker();
   const go = async () => {
     err.textContent = '';
     try {
-      const r = await api('/api/join', { method: 'POST', body: { code, name: name.value } });
+      const r = await api('/api/join', { method: 'POST', body: { code, name: name.value, team: team.get() } });
       player = { token: r.token, name: r.name };
       localStorage.setItem(store, JSON.stringify(player)); localStorage.setItem('qp_name', r.name);
       Sound.play('join'); connect();
@@ -17,7 +18,7 @@ function showJoin(message) {
   };
   name.addEventListener('keydown', (e) => e.key === 'Enter' && go());
   fill(stage, h('div', { class: 'card center stack' },
-    h('h1', {}, 'Bienvenue 👋'), h('p', { class: 'muted' }, `Partie n° ${code}`), name, err,
+    h('h1', {}, 'Bienvenue 👋'), h('p', { class: 'muted' }, `Partie n° ${code}`), name, team.node, err,
     h('button', { class: 'btn pink', onclick: go }, 'Rejoindre la partie')));
   name.focus();
 }
@@ -57,10 +58,9 @@ function renderQuestion(s) {
   const q = s.question, head = questionHeader(q);
   playTimer = head.timer;
   const done = s.has_answered;
-  let input;
-  if (q.kind === 'libre') input = done ? null : freeForm((v) => { Sound.play('click'); answer(v); });
-  else input = answerButtons(q, { disabled: done, mine: s.my_value, onPick: (i) => { Sound.play('click'); answer(i); } });
-  fill(stage, head.node, ...questionBlock(q), input,
+  const input = answerInput(q, { disabled: done, mine: s.my_value, hidden: s.hidden, onSubmit: answer });
+  fill(stage, head.node, streakNode(s.streak), ...questionBlock(q), input,
+    s.joker_available ? jokerButton(() => ws.send(JSON.stringify({ type: 'joker' }))) : null,
     done ? h('div', { class: 'banner wait', style: 'margin-top:16px' }, h('div', { class: 'big' }, '✔'), 'Réponse envoyée ! Suspense…') : null);
   head.timer.start(s.remaining_ms, q.time_limit * 1000);
 }
@@ -70,14 +70,14 @@ function renderReveal(s, changed) {
   const q = s.question, r = s.reveal, me = s.me;
   if (changed) { Sound.play(me.correct ? 'correct' : 'wrong'); flash(me.correct ? 'good' : 'bad'); if (!me.correct) navigator.vibrate?.([250, 90, 250]); }
   const banner = me.correct
-    ? h('div', { class: 'banner good' }, h('div', { class: 'big' }, '🎉 Bravo !'), `+${me.points} points`)
+    ? h('div', { class: 'banner good' }, h('div', { class: 'big' }, '🎉 Bravo !'), `+${me.points} points`, bonusNode(me.bonus, me.streak))
     : h('div', { class: 'banner bad' }, h('div', { class: 'big' }, me.given ? '😬 Raté…' : '⏰ Trop tard !'),
         `Bonne réponse : ${r.correct_text}`);
   fill(stage, banner, ...questionBlock(q),
-    q.kind === 'libre' ? null : answerButtons(q, { correct: r.correct_index, mine: me.given ? q.choices.indexOf(me.given) : null }),
+    revealNode(q, r, me.value),
     explanationNode(r.explanation),
     h('div', { class: 'card' }, h('h2', {}, `Vous êtes ${me.rank}${me.rank === 1 ? 'er' : 'e'} sur ${me.of} — ${me.score} pts`),
-      leaderboardNode(s.leaderboard, player.name)),
+      leaderboardNode(s.leaderboard, player.name)), teamsNode(s.teams),
     r.next_in_ms != null ? countdownNode(r.next_in_ms, r.is_last ? 'Podium' : 'Question suivante')
       : h('p', { class: 'center muted' }, 'La suite arrive…'));
 }

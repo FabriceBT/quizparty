@@ -6,6 +6,9 @@
   <section class="card">
     <label class="field">Nom du quiz
       <input type="text" id="title" maxlength="80" placeholder="Ex. : Quiz de l'anniversaire de Léa"></label>
+    <label class="field">Rubrique dans la bibliothèque (facultatif)
+      <input type="text" id="category" maxlength="30" list="categories" placeholder="Ex. : Cinéma, Sport, Culture générale…">
+      <datalist id="categories"></datalist></label>
     <label class="field" style="margin:0">Description (facultatif)
       <textarea id="description" rows="2" maxlength="300"></textarea></label>
   </section>

@@ -162,3 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#theme-btn')?.addEventListener('click', () => Theme.toggle());
   $('#sound-btn')?.addEventListener('click', () => Sound.toggle());
 });
+
+/* Application installable : le service worker n'est enregistré que si le navigateur le permet (HTTPS ou localhost). */
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));

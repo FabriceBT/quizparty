@@ -38,12 +38,13 @@ async function init() {
   const rest = players;
   fill(app, 
     h('h1', { class: 'center' }, lib ? '🏆 Classement' : provisional ? '🏆 Classement provisoire' : '🏆 Podium'), h('p', { class: 'center muted' }, r.title),
-    lib ? h('p', { class: 'center muted' }, 'Ce quiz est ouvert à tout moment : le classement se met à jour à chaque partie.')
+    lib ? h('p', { class: 'center muted' }, 'Ce quiz est ouvert à tout moment : le classement se met à jour à chaque partie' + (r.weekly ? ' et repart de zéro chaque lundi.' : '.'))
       : provisional ? h('p', { class: 'center muted' }, 'Le quiz est encore ouvert : d’autres joueurs peuvent encore jouer, le classement évolue.') : null,
     players.length ? pod : h('p', { class: 'center muted' }, 'Aucun participant.'),
+    teamsNode(r.teams),
     h('div', { class: 'card' }, h('h2', {}, 'Classement complet'),
       h('ol', { class: 'board' }, rest.map((p) => h('li', { style: p.name === me ? 'color:var(--brand)' : null },
-        h('span', { class: 'rk' }, p.rank), h('span', { class: 'nm' }, p.name),
+        h('span', { class: 'rk' }, p.rank), h('span', { class: 'nm' }, p.team ? `${teamEmoji(p.team)} ${p.name}` : p.name),
         h('span', { class: 'muted' }, `${p.correct}/${p.total} · ${p.pct}%`), h('span', { class: 'pts' }, p.score))))),
     h('div', { class: 'stack no-print' },
       lib ? h('button', { class: 'btn green', onclick: () => { try { localStorage.removeItem(`qp_open_${code}`); } catch (_) {} location.href = `/j/${code}`; } }, '🔁 Rejouer à ce quiz') : null,
