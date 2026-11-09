@@ -53,7 +53,7 @@ async function send(value, elapsed) {
   try { r = await api(`/api/solo/${code}/answer`, { method: 'POST', body: { player_id: p.id, question_index: qi, value, elapsed_ms: elapsed } }); }
   catch (e) { toast(e.message); if (e.status === 409) { p.done.push(qi); step++; } return advance(); }
   p.score = r.score; p.done.push(qi);
-  Sound.play(r.correct ? 'correct' : 'wrong'); flash(r.correct ? 'good' : 'bad');
+  Sound.play(r.correct ? 'correct' : 'wrong'); flash(r.correct ? 'good' : 'bad'); navigator.vibrate?.(r.correct ? 80 : [250, 90, 250]);
   stage.dataset.phase = 'reveal';
   const q = qOf(step);
   const nextP = step + 1 < total() ? who(step + 1) : null;

@@ -73,7 +73,7 @@ async function send(q, value) {
       body: { token: player.token, question_index: q.index, value } });
   } catch (e) { if (e.status !== 409) toast(e.message); return next(); }
   Sound.play(r.correct ? 'correct' : 'wrong'); flash(r.correct ? 'good' : 'bad');
-  if (r.correct) navigator.vibrate?.(80);
+  navigator.vibrate?.(r.correct ? 80 : [250, 90, 250]);   // vibration longue en cas d'erreur ou de temps écoulé
   stage.dataset.phase = 'reveal';
   let moved = false;
   const go = () => { if (moved) return; moved = true; stopTimers(); next(); };
