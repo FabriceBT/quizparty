@@ -68,7 +68,7 @@ function renderQuestion(s) {
 function renderReveal(s, changed) {
   stage.dataset.phase = 'reveal';
   const q = s.question, r = s.reveal, me = s.me;
-  if (changed) { Sound.play(me.correct ? 'correct' : 'wrong'); flash(me.correct ? 'good' : 'bad'); navigator.vibrate?.(me.correct ? 80 : [250, 90, 250]); }
+  if (changed) { Sound.play(me.correct ? 'correct' : 'wrong'); flash(me.correct ? 'good' : 'bad'); if (!me.correct) navigator.vibrate?.([250, 90, 250]); }
   const banner = me.correct
     ? h('div', { class: 'banner good' }, h('div', { class: 'big' }, '🎉 Bravo !'), `+${me.points} points`)
     : h('div', { class: 'banner bad' }, h('div', { class: 'big' }, me.given ? '😬 Raté…' : '⏰ Trop tard !'),

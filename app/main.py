@@ -41,6 +41,15 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Quiz Party", lifespan=lifespan)
+@app.middleware("http")
+async def static_revalidate(request, call_next):
+    """Les téléphones revérifient les fichiers JS/CSS à chaque chargement (évite de garder une ancienne version en cache)."""
+    resp = await call_next(request)
+    if request.url.path.startswith("/static/") and request.url.path.endswith((".js", ".css")):
+        resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
