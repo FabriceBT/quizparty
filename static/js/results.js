@@ -30,23 +30,27 @@ function animate(node) {
 async function init() {
   const r = await api(`/api/sessions/${code}/results`);
   const me = localStorage.getItem('qp_name');
+  const lib = r.library && r.status !== 'finished';          // classement permanent de la bibliothèque
   const provisional = r.mode === 'open' && r.status !== 'finished';
   const players = r.players;
   const top = players.slice(0, 3).map((p, i) => ({ ...p, pos: i + 1 }));   // même à égalité, 3 marches au plus
   const pod = podium(top);
   const rest = players;
   fill(app, 
-    h('h1', { class: 'center' }, provisional ? '🏆 Classement provisoire' : '🏆 Podium'), h('p', { class: 'center muted' }, r.title),
-    provisional ? h('p', { class: 'center muted' }, 'Le quiz est encore ouvert : d’autres joueurs peuvent encore jouer, le classement évolue.') : null,
+    h('h1', { class: 'center' }, lib ? '🏆 Classement' : provisional ? '🏆 Classement provisoire' : '🏆 Podium'), h('p', { class: 'center muted' }, r.title),
+    lib ? h('p', { class: 'center muted' }, 'Ce quiz est ouvert à tout moment : le classement se met à jour à chaque partie.')
+      : provisional ? h('p', { class: 'center muted' }, 'Le quiz est encore ouvert : d’autres joueurs peuvent encore jouer, le classement évolue.') : null,
     players.length ? pod : h('p', { class: 'center muted' }, 'Aucun participant.'),
     h('div', { class: 'card' }, h('h2', {}, 'Classement complet'),
       h('ol', { class: 'board' }, rest.map((p) => h('li', { style: p.name === me ? 'color:var(--brand)' : null },
         h('span', { class: 'rk' }, p.rank), h('span', { class: 'nm' }, p.name),
         h('span', { class: 'muted' }, `${p.correct}/${p.total} · ${p.pct}%`), h('span', { class: 'pts' }, p.score))))),
     h('div', { class: 'stack no-print' },
-      provisional ? h('button', { class: 'btn pink', onclick: () => location.reload() }, '🔄 Actualiser le classement')
+      lib ? h('button', { class: 'btn green', onclick: () => { try { localStorage.removeItem(`qp_open_${code}`); } catch (_) {} location.href = `/j/${code}`; } }, '🔁 Rejouer à ce quiz') : null,
+      lib ? h('a', { class: 'btn pink', href: '/play' }, '🎮 Choisir un autre quiz') : null,
+      lib ? null : provisional ? h('button', { class: 'btn pink', onclick: () => location.reload() }, '🔄 Actualiser le classement')
         : h('a', { class: 'btn pink', href: `/review/${code}` }, '🔍 Revoir les réponses'),
-      provisional ? h('p', { class: 'center muted' }, 'Les bonnes réponses seront visibles à la clôture du quiz.') : null,
+      !lib && provisional ? h('p', { class: 'center muted' }, 'Les bonnes réponses seront visibles à la clôture du quiz.') : null,
       h('a', { class: 'btn ghost', href: `/api/sessions/${code}/export.xlsx` }, '📊 Exporter en Excel'),
       h('button', { class: 'btn ghost', onclick: () => print() }, '🖨 Imprimer / enregistrer en PDF'),
       h('a', { class: 'btn ghost', href: '/' }, 'Accueil')));

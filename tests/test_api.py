@@ -357,3 +357,28 @@ def test_demarrage_automatique_manuel(client):
         recv_until(host, "lobby")
         client.post("/api/join", json={"code": code, "name": "Lea"})
         assert "start_in_ms" not in recv_until(host, "lobby")
+
+
+def test_library_self_service(client):
+    qid = make_quiz(client)
+    lst = client.get("/api/library").json()
+    assert any(q["id"] == qid for q in lst)                              # publié par défaut
+    r = client.get(f"/q/{qid}", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"].startswith("/j/")
+    code = r.headers["location"].split("/j/")[1]
+    assert client.get(f"/q/{qid}", follow_redirects=False).headers["location"] == f"/j/{code}"   # même partie permanente
+    join_open(client, code, "Lea")
+    assert client.post(f"/api/open/{code}/join", json={"name": "Lea"}).status_code == 200      # doublon autorisé
+    assert client.get(f"/api/sessions/{code}/results").json()["library"] is True
+    assert next(q for q in client.get("/api/library").json() if q["id"] == qid)["players"] == 2
+    # masquer
+    assert client.post(f"/api/library/{qid}/publish", json={"published": False}).status_code == 200
+    assert all(q["id"] != qid for q in client.get("/api/library").json())
+    assert client.get(f"/q/{qid}").status_code == 404
+    client.post(f"/api/library/{qid}/publish", json={"published": True})
+    # remise à zéro : nouvelle partie à la visite suivante
+    client.post(f"/api/library/{qid}/reset")
+    new = client.get(f"/q/{qid}", follow_redirects=False).headers["location"].split("/j/")[1]
+    assert new != code
+    assert client.get("/library").status_code == 200 and client.get("/qr-play.svg").status_code == 200
+    assert client.get("/api/library/admin").json()

@@ -26,7 +26,7 @@ def results(s: Session, gs: db.GameSession) -> dict:
                      "pct": round(100 * good / total) if total else 0, "answered": len(p.answers),
                      "rank": rank_of(p.score, scores)})
     rows.sort(key=lambda r: (r["rank"], r["name"].lower()))
-    return {"code": gs.code, "title": gs.quiz.title, "mode": gs.mode, "status": gs.status,
+    return {"code": gs.code, "title": gs.quiz.title, "mode": gs.mode, "status": gs.status, "library": gs.host_key == "library",
             "date": gs.created_at.isoformat(), "total_questions": total, "players": rows}
 
 

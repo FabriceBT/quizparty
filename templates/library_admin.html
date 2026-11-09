@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="wrap">
+  <section class="card center stack">
+    <h1>📲 Bibliothèque en libre-service</h1>
+    <p class="muted">Les joueurs scannent ce QR code et jouent à n'importe quel quiz, à tout moment, sans que vous lanciez quoi que ce soit.</p>
+    <img src="/qr-play.svg" alt="QR code" style="width:min(70vw,260px);background:#fff;border-radius:12px;padding:8px;margin:0 auto">
+    <p><b>{{ join_short }}</b></p>
+    {% if local_only %}<p class="error">Cette adresse n'est accessible que depuis cet ordinateur : utilisez un tunnel ou Codespaces pour les téléphones.</p>{% endif %}
+  </section>
+  <section class="card stack">
+    <h2>Quiz proposés</h2>
+    <div id="list" class="stack"><p class="muted">Chargement…</p></div>
+    <a class="btn ghost" href="/quizzes">📚 Mes quiz</a>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/library_admin.js"></script>
+{% endblock %}

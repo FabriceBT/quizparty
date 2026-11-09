@@ -25,6 +25,7 @@ class Quiz(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(80))
     description: Mapped[str] = mapped_column(String(300), default="")
+    published: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")   # visible dans la bibliothèque des téléphones
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     questions: Mapped[list["Question"]] = relationship(
         back_populates="quiz", cascade="all, delete-orphan", order_by="Question.position")
@@ -120,5 +121,11 @@ def init_db(url: str = DB_URL):
         def _fk(dbapi_conn, _):  # clés étrangères actives sous SQLite
             dbapi_conn.execute("PRAGMA foreign_keys=ON")
     Base.metadata.create_all(_engine)
+    # Migration légère : les bases créées avant la bibliothèque n'ont pas la colonne « published ».
+    # Tous les quiz existants y sont visibles par défaut (l'organisateur peut les masquer ensuite).
+    from sqlalchemy import inspect
+    if "published" not in {c["name"] for c in inspect(_engine).get_columns("quizzes")}:
+        with _engine.begin() as conn:
+            conn.exec_driver_sql("ALTER TABLE quizzes ADD COLUMN published BOOLEAN NOT NULL DEFAULT true")
     SessionLocal.configure(bind=_engine)
     return _engine

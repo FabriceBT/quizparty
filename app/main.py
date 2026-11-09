@@ -25,6 +25,7 @@ from sqlalchemy import select
 from . import db, services
 from .config import BASE_DIR, MAX_UPLOAD_MB, MEDIA_DIR
 from .game import Game, GameError, manager
+from .library import router as library_router
 from .openmode import open_session, router as open_router
 from .schemas import JoinIn, QuizIn, SessionIn
 from .scoring import compute_points, correct_text, given_text, is_correct
@@ -44,6 +45,7 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 app.include_router(open_router)
+app.include_router(library_router)
 
 
 def get_db():

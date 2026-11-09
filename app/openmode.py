@@ -94,7 +94,7 @@ def join(code: str, data: JoinIn, s=Depends(get_db)):
         raise HTTPException(400, "Entrez un prénom.")
     if len(gs.players) >= OPEN_MAX_PLAYERS:
         raise HTTPException(400, "Le quiz est complet.")
-    if any(p.name.lower() == name.lower() for p in gs.players):
+    if gs.host_key != "library" and any(p.name.lower() == name.lower() for p in gs.players):   # bibliothèque : plusieurs essais possibles
         raise HTTPException(400, "Ce prénom est déjà pris, ajoutez une initiale.")
     token = secrets.token_urlsafe(16)
     s.add(db.Player(session_id=gs.id, name=name, token=token))
