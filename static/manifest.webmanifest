@@ -1,6 +1,6 @@
 {
-  "name": "Quiz Party",
-  "short_name": "Quiz Party",
+  "name": "Fouquiz",
+  "short_name": "Fouquiz",
   "description": "Créez et jouez à des quiz en direct, seul ou à plusieurs.",
   "lang": "fr",
   "start_url": "/",

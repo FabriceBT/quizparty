@@ -1,4 +1,4 @@
-# 🎉 Quiz Party
+# 🎉 Fouquiz
 
 Application de quiz en direct, simple et moderne. Les participants **scannent un QR code** avec leur téléphone (aucune installation, aucun compte) et jouent ensemble : questions synchronisées, chrono, classement en direct, podium animé, revue des réponses.
 
@@ -116,7 +116,7 @@ Idées d'évolutions faciles : musique d'ambiance, sons personnalisés par bonne
 
 ## Mettre en ligne (pour jouer à distance)
 
-**Le plus simple : Render gratuit** avec le `Dockerfile` et le `render.yaml` fournis. Sur render.com : *New + → Blueprint →* choisir ce dépôt GitHub, saisir `QUIZ_ADMIN_PASSWORD`. L'adresse (https://…onrender.com) ne change plus, donc le QR code de la bibliothèque (`/library`) peut être imprimé. Limites de l'offre gratuite : le service s'endort après 15 minutes sans visite (30 à 60 s de réveil) et son disque est effacé à chaque redémarrage. **Pour ne pas perdre vos quiz :** téléchargez la sauvegarde (page « Mes quiz ») et déposez le `.zip` dans le dossier `seed/` du dépôt : il est rechargé automatiquement à chaque démarrage. Les classements, eux, repartent de zéro (le plan payant avec disque les conserve).
+**Le plus simple et gratuit : GitHub Codespaces** (port 8000 en *Public*, puis lancer le serveur comme indiqué plus haut). L'adresse change à chaque nouveau Codespace et le serveur s'arrête quand il s'endort : c'est adapté à une soirée, pas à un QR code imprimé. Un `Dockerfile` est aussi fourni pour un hébergement de votre choix. Le dossier `seed/` accepte des sauvegardes `.zip` rechargées à chaque démarrage.
 
 Il faut un hébergement qui accepte les **WebSockets**, un disque persistant (ou PostgreSQL) et le **HTTPS** (indispensable pour installer l'application sur un téléphone). Un petit serveur privé virtuel (VPS) à quelques euros par mois suffit pour plusieurs centaines de joueurs.
 
@@ -135,7 +135,7 @@ Une fois l'application en ligne en HTTPS, chaque participant peut l'installer co
 - **Android (Chrome)** : menu ⋮ → **Installer l'application** (ou *Ajouter à l'écran d'accueil*).
 - **iPhone (Safari)** : bouton Partager → **Sur l'écran d'accueil**.
 
-L'icône « Quiz Party » apparaît alors comme n'importe quelle application, en plein écran. Le plus simple pour un événement : afficher le QR code, les joueurs n'ont rien à installer.
+L'icône « Fouquiz » apparaît alors comme n'importe quelle application, en plein écran. Le plus simple pour un événement : afficher le QR code, les joueurs n'ont rien à installer.
 
 ### Étape 2 — Google Play (Android)
 

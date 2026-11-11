@@ -9,7 +9,7 @@ call ".venv\Scripts\activate.bat"
 python -m pip install -q -r requirements.txt
 echo.
 echo ================================================
-echo   Quiz Party demarre : http://localhost:8000
+echo   Fouquiz demarre : http://localhost:8000
 echo   (fermez cette fenetre pour arreter)
 echo ================================================
 echo.

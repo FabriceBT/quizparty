@@ -1,4 +1,4 @@
-/* Quiz Party – feuille de style unique. Thème clair/sombre via variables CSS. */
+/* Fouquiz – feuille de style unique. Thème clair/sombre via variables CSS. */
 :root {
   --bg: #fff8ef; --bg2: #ffe3c8; --bg3: #d3f4ec; --card: #ffffff; --text: #10222c; --muted: #5b7280;
   --line: #f1e3d3; --brand: #ff5a36; --brand-2: #ffb020; --ok: #12a66a; --ko: #e11d48; --amber: #fbbf24;
@@ -268,3 +268,93 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--brand); fl
   .streak { margin: 0 0 4px; font-size: .85rem; }
   .game[data-phase="reveal"] .pointbox img { max-height: 30vh; }
 }
+
+/* =====================================================================
+   Fouquiz – couche « moderne » : boutons doux et lumineux, entrées animées
+   (placée en fin de fichier : elle prend le dessus sur les styles précédents)
+   ===================================================================== */
+:root { --ease: cubic-bezier(.22, 1, .36, 1); --spring: cubic-bezier(.34, 1.56, .64, 1); }
+
+/* Fond : deux halos qui flottent lentement */
+body::before, body::after { content: ""; position: fixed; z-index: -1; pointer-events: none; border-radius: 50%; filter: blur(70px); opacity: .45; will-change: transform; }
+body::before { width: 46vmax; height: 46vmax; left: -14vmax; top: -16vmax; background: #ff8a5c; animation: drift 22s ease-in-out infinite alternate; }
+body::after { width: 42vmax; height: 42vmax; right: -14vmax; bottom: -16vmax; background: #3ddbd0; animation: drift 26s ease-in-out infinite alternate-reverse; }
+[data-theme="dark"] body::before, [data-theme="dark"] body::after { opacity: .22; }
+@keyframes drift { to { transform: translate(7vmax, 5vmax) scale(1.18); } }
+
+.topbar { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.hero h1 { background: linear-gradient(120deg, #ff5a36, #ffb020 45%, #0ea5e9); -webkit-background-clip: text; background-clip: text; color: transparent; letter-spacing: -.02em; }
+.hero .logo { box-shadow: 0 14px 34px -8px rgba(255, 90, 54, .55); }
+.icon-btn { transition: transform .25s var(--spring), box-shadow .25s; }
+.icon-btn:hover { transform: translateY(-2px) rotate(-6deg); } .icon-btn:active { transform: scale(.9); }
+
+/* Cartes : apparition douce, léger relief */
+.card { border: 1px solid rgba(255, 255, 255, .55); animation: rise .55s var(--ease) backwards; }
+[data-theme="dark"] .card { border-color: rgba(255, 255, 255, .06); }
+@keyframes rise { from { opacity: 0; transform: translateY(18px) scale(.97); } }
+.wrap > .card:nth-child(2), .game > :nth-child(2) { animation-delay: .06s; }
+.wrap > .card:nth-child(3), .game > :nth-child(3) { animation-delay: .12s; }
+.wrap > .card:nth-child(4), .game > :nth-child(4) { animation-delay: .18s; }
+.game > * { animation: rise .45s var(--ease) backwards; }
+
+/* Boutons : dégradé lumineux, halo coloré, reflet qui balaie au survol, ressort à l'appui */
+.btn { position: relative; overflow: hidden; border-radius: 16px; letter-spacing: .01em;
+  box-shadow: 0 10px 22px -8px rgba(240, 74, 34, .55), inset 0 1px 0 rgba(255, 255, 255, .38), inset 0 -2px 0 rgba(0, 0, 0, .08);
+  transition: transform .25s var(--spring), box-shadow .25s var(--ease), filter .25s; }
+.btn::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .38) 50%, transparent 65%);
+  transform: translateX(-120%); pointer-events: none; }
+.btn:hover:not(:disabled)::after { transform: translateX(120%); transition: transform .7s var(--ease); }
+.btn:hover:not(:disabled) { transform: translateY(-2px); filter: saturate(1.12) brightness(1.04); }
+.btn:active:not(:disabled) { transform: scale(.96); filter: brightness(.96); transition-duration: .08s;
+  box-shadow: 0 4px 10px -6px rgba(240, 74, 34, .5), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.btn.pink { box-shadow: 0 10px 22px -8px rgba(29, 78, 216, .6), inset 0 1px 0 rgba(255, 255, 255, .38), inset 0 -2px 0 rgba(0, 0, 0, .08); }
+.btn.green { box-shadow: 0 10px 22px -8px rgba(15, 159, 103, .6), inset 0 1px 0 rgba(255, 255, 255, .38), inset 0 -2px 0 rgba(0, 0, 0, .08); }
+.btn.danger { box-shadow: 0 10px 22px -8px rgba(225, 29, 72, .55), inset 0 1px 0 rgba(255, 255, 255, .3); }
+.btn.joker { box-shadow: 0 10px 22px -8px rgba(239, 68, 68, .6), inset 0 1px 0 rgba(255, 255, 255, .38); }
+.btn.ghost { backdrop-filter: blur(6px); box-shadow: inset 0 0 0 2px var(--line), 0 6px 14px -10px rgba(0, 0, 0, .3); }
+.btn.ghost:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--brand), 0 8px 18px -10px rgba(255, 90, 54, .5); }
+.btn.small { box-shadow: 0 6px 14px -8px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .3); }
+.btn.next { box-shadow: 0 16px 32px -10px rgba(15, 159, 103, .75), inset 0 1px 0 rgba(255, 255, 255, .4); animation: breathe 2.2s ease-in-out infinite; }
+.btn.next:hover:not(:disabled) { animation-play-state: paused; }
+@keyframes breathe { 50% { transform: scale(1.025); box-shadow: 0 20px 40px -10px rgba(15, 159, 103, .9), inset 0 1px 0 rgba(255, 255, 255, .4); } }
+.btn:disabled { filter: grayscale(.4); box-shadow: none; }
+.btn:focus-visible, .answer:focus-visible, .team:focus-visible, .icon-btn:focus-visible { outline: 3px solid var(--brand-2); outline-offset: 3px; }
+
+/* Réponses : reflet vitré, entrée en cascade, ressort au toucher */
+.answer { border-radius: 18px; position: relative; overflow: hidden;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .24), rgba(255, 255, 255, 0) 55%);
+  box-shadow: 0 12px 24px -12px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .35);
+  transition: transform .25s var(--spring), box-shadow .25s var(--ease), opacity .3s, filter .3s;
+  animation: rise .5s var(--spring) backwards; }
+.answer[data-i="1"] { animation-delay: .06s; } .answer[data-i="2"] { animation-delay: .12s; }
+.answer[data-i="3"] { animation-delay: .18s; } .answer[data-i="4"] { animation-delay: .24s; }
+.answer:hover:not(:disabled) { transform: translateY(-3px) scale(1.01); box-shadow: 0 18px 30px -12px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .4); }
+.answer:active:not(:disabled) { transform: scale(.96); box-shadow: 0 6px 12px -8px rgba(0, 0, 0, .5); transition-duration: .08s; }
+.answer .letter, .answer .num { border-radius: 50%; background: rgba(255, 255, 255, .28); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4); }
+.answer.right { box-shadow: 0 0 0 4px var(--ok), 0 0 34px var(--ok); animation: win .7s var(--spring); }
+@keyframes win { 0% { transform: scale(1); } 35% { transform: scale(1.06); } 100% { transform: scale(1); } }
+.answer.mine:not(.right) { animation: shake .45s; }
+.answers.order .answer.picked { outline: 3px solid #fff; outline-offset: -3px; box-shadow: 0 0 0 3px var(--text), 0 14px 26px -10px rgba(0, 0, 0, .55); }
+
+/* Chrono : barre épaisse et lumineuse, chiffre qui bat quand il reste peu de temps */
+.timer-bar { height: 12px; box-shadow: inset 0 1px 3px rgba(0, 0, 0, .15); }
+.timer-bar > i { box-shadow: 0 0 14px rgba(255, 176, 32, .75); }
+
+/* Bannières, classements, chips */
+.banner { border-radius: 22px; box-shadow: 0 18px 36px -16px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .35); animation: slide-in .6s var(--spring); }
+.banner.good { animation: slide-in .6s var(--spring), glow-good 1.6s ease-out; }
+@keyframes glow-good { 0% { box-shadow: 0 0 0 0 rgba(25, 185, 124, .8); } 100% { box-shadow: 0 18px 36px -16px rgba(0, 0, 0, .5), 0 0 0 26px rgba(25, 185, 124, 0); } }
+.teams .team { transition: transform .25s var(--spring), background .2s, border-color .2s, box-shadow .25s; }
+.teams .team:hover { transform: translateY(-2px); } .teams .team:active { transform: scale(.94); }
+.teams .team.on { box-shadow: 0 8px 18px -8px rgba(255, 90, 54, .7); animation: win .4s var(--spring); }
+.pt-dot { animation: win .45s var(--spring); }
+input[type=text], input[type=password], input[type=url], textarea, select { transition: border-color .2s, box-shadow .25s; }
+input:focus, textarea:focus, select:focus { box-shadow: 0 0 0 4px rgba(255, 90, 54, .18); }
+
+@media (max-width: 640px), (max-height: 600px) {
+  .btn { border-radius: 14px; }
+  .answer { border-radius: 14px; box-shadow: 0 8px 16px -10px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .35); }
+  .btn.next, .game[data-phase="reveal"] .btn.next { border-radius: 18px; }
+  body::before, body::after { filter: blur(50px); }
+}
+@media (hover: none) { .btn:hover:not(:disabled), .answer:hover:not(:disabled), .teams .team:hover { transform: none; filter: none; } .btn::after { display: none; } }

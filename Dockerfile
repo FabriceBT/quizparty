@@ -1,4 +1,4 @@
-# Quiz Party en production : docker build -t quizparty . && docker run -p 8000:8000 -v quizdata:/data quizparty
+# Fouquiz en production : docker build -t quizparty . && docker run -p 8000:8000 -v quizdata:/data quizparty
 FROM python:3.12-slim
 WORKDIR /app
 COPY requirements.txt .

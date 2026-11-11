@@ -1,6 +1,6 @@
 Dossier « seed » : quiz rechargés automatiquement à chaque démarrage du serveur.
 
 Déposez ici un ou plusieurs fichiers de sauvegarde .zip (page « Mes quiz » > « Télécharger la sauvegarde »).
-Au démarrage, Quiz Party les importe : les quiz déjà présents ne sont jamais dupliqués.
+Au démarrage, Fouquiz les importe : les quiz déjà présents ne sont jamais dupliqués.
 Utile sur Render gratuit, dont le disque est effacé à chaque redémarrage.
 Pour ne plus recharger un quiz : retirez le fichier .zip de ce dossier.

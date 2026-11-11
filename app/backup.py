@@ -56,7 +56,7 @@ def backup(s=Depends(get_db)):
             if MEDIA_NAME.match(name) and f.is_file():
                 z.write(f, f"media/{name}")
     return Response(buf.getvalue(), media_type="application/zip", headers={
-        "Content-Disposition": f'attachment; filename="quizparty-sauvegarde-{date.today().isoformat()}.zip"'})
+        "Content-Disposition": f'attachment; filename="fouquiz-sauvegarde-{date.today().isoformat()}.zip"'})
 
 
 def import_backup(raw: bytes, s) -> dict:
@@ -71,7 +71,7 @@ def import_backup(raw: bytes, s) -> dict:
     except ValueError:
         raise
     except Exception:
-        raise ValueError("Ce fichier n'est pas une sauvegarde Quiz Party valide.")
+        raise ValueError("Ce fichier n'est pas une sauvegarde Fouquiz valide.")
     for info in z.infolist():                                   # médias : uniquement des noms attendus, jamais de chemin
         name = info.filename.removeprefix("media/")
         if info.filename.startswith("media/") and MEDIA_NAME.match(name) and not (MEDIA_DIR / name).exists():

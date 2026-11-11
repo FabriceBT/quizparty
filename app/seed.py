@@ -9,7 +9,7 @@ from .schemas import QuizIn
 
 DEMO = {
     "title": "Culture générale – démo",
-    "description": "15 questions pour tester Quiz Party : QCM, vrai/faux, réponses libres et image.",
+    "description": "15 questions pour tester Fouquiz : QCM, vrai/faux, réponses libres et image.",
     "questions": [
         {"kind": "qcm", "text": "Quelle est la capitale de l'Australie ?",
          "choices": ["Sydney", "Canberra", "Melbourne", "Perth"], "correct": 1, "time_limit": 15,

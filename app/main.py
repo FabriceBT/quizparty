@@ -1,4 +1,4 @@
-"""Quiz Party – application FastAPI (pages, API REST, WebSockets)."""
+"""Fouquiz – application FastAPI (pages, API REST, WebSockets)."""
 from __future__ import annotations
 
 import hashlib
@@ -43,7 +43,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Quiz Party", lifespan=lifespan)
+app = FastAPI(title="Fouquiz", lifespan=lifespan)
 @app.middleware("http")
 async def static_revalidate(request, call_next):
     """Les téléphones revérifient les fichiers JS/CSS à chaque chargement (évite de garder une ancienne version en cache)."""

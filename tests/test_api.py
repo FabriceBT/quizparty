@@ -239,7 +239,7 @@ def join_open(client, code, name):
 def test_mode_quand_on_veut(client):
     code = open_session(client)
     assert client.get(f"/api/sessions/{code}/exists").status_code == 200       # le QR / saisie du code marche
-    assert "Quiz Party" in client.get(f"/j/{code}").text and "open.js" in client.get(f"/j/{code}").text
+    assert "Fouquiz" in client.get(f"/j/{code}").text and "open.js" in client.get(f"/j/{code}").text
     assert client.get(f"/open/{code}").status_code == 200
 
     lea, tom = join_open(client, code, "Lea"), join_open(client, code, "Tom")
