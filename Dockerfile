@@ -6,6 +6,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app app
 COPY static static
 COPY templates templates
+COPY seed seed
 ENV QUIZ_DATA=/data PORT=8000
 VOLUME /data
 EXPOSE 8000

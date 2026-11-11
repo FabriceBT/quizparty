@@ -116,7 +116,7 @@ Idées d'évolutions faciles : musique d'ambiance, sons personnalisés par bonne
 
 ## Mettre en ligne (pour jouer à distance)
 
-**Le plus simple : un lien permanent** avec le `Dockerfile` et le `render.yaml` fournis. Sur render.com : *New + → Blueprint →* choisir ce dépôt GitHub, saisir `QUIZ_ADMIN_PASSWORD`. L'adresse (https://…onrender.com) ne change plus : le QR code de la bibliothèque (`/library`) peut être imprimé une fois pour toutes. Le disque persistant demande l'offre payante (~7 $/mois). Sans disque (offre gratuite), les quiz sont effacés à chaque redémarrage : téléchargez la sauvegarde (page « Mes quiz ») et restaurez-la après coup.
+**Le plus simple : Render gratuit** avec le `Dockerfile` et le `render.yaml` fournis. Sur render.com : *New + → Blueprint →* choisir ce dépôt GitHub, saisir `QUIZ_ADMIN_PASSWORD`. L'adresse (https://…onrender.com) ne change plus, donc le QR code de la bibliothèque (`/library`) peut être imprimé. Limites de l'offre gratuite : le service s'endort après 15 minutes sans visite (30 à 60 s de réveil) et son disque est effacé à chaque redémarrage. **Pour ne pas perdre vos quiz :** téléchargez la sauvegarde (page « Mes quiz ») et déposez le `.zip` dans le dossier `seed/` du dépôt : il est rechargé automatiquement à chaque démarrage. Les classements, eux, repartent de zéro (le plan payant avec disque les conserve).
 
 Il faut un hébergement qui accepte les **WebSockets**, un disque persistant (ou PostgreSQL) et le **HTTPS** (indispensable pour installer l'application sur un téléphone). Un petit serveur privé virtuel (VPS) à quelques euros par mois suffit pour plusieurs centaines de joueurs.
 

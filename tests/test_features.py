@@ -282,3 +282,20 @@ def test_fichiers_statiques_versionnes(client):
     for url in ("/play", "/j/123456", "/results/x", "/library"):
         html = client.get(url).text
         assert "/static/css/app.css?v=" in html and "/static/js/common.js?v=" in html, url
+
+
+def test_sauvegarde_du_depot_rechargee_au_demarrage(client, tmp_path, monkeypatch):
+    """Dossier « seed » : les quiz sont remis en place à chaque démarrage (hébergement gratuit à disque éphémère)."""
+    from app import backup, db
+    quiz(client, [QCM, ORDRE], title="Quiz du dépôt", category="Seed")
+    zip_bytes = client.get("/api/backup").content
+    for q in client.get("/api/quizzes").json():
+        client.delete(f"/api/quizzes/{q['id']}")
+    (tmp_path / "ma-sauvegarde.zip").write_bytes(zip_bytes)
+    (tmp_path / "abime.zip").write_bytes(b"pas un zip")                # un fichier abîmé n'empêche pas le démarrage
+    monkeypatch.setattr(backup, "SEED_DIR", tmp_path)
+    with db.SessionLocal() as s:
+        backup.load_seed_backups(s)
+        backup.load_seed_backups(s)                                   # 2e démarrage : aucun doublon
+    mine = [q for q in client.get("/api/quizzes").json() if q["title"] == "Quiz du dépôt"]
+    assert len(mine) == 1 and mine[0]["category"] == "Seed" and mine[0]["questions"] == 2

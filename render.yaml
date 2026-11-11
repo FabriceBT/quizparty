@@ -1,15 +1,15 @@
-# Déploiement en un clic sur Render.com : « New + » → « Blueprint » → choisir ce dépôt GitHub.
-# Le disque persistant (1 Go) garde les quiz et les classements entre les redémarrages (offre payante « Starter », ~7 $/mois).
+# Déploiement GRATUIT sur Render.com : « New + » → « Blueprint » → choisir ce dépôt GitHub.
+# Limites de l'offre gratuite : le service s'endort après 15 min sans visite (30-60 s de réveil) et son disque est effacé
+# à chaque redémarrage. Les quiz du dossier « seed » (fichiers .zip de sauvegarde) sont rechargés automatiquement.
 services:
   - type: web
     name: quizparty
     runtime: docker
-    plan: starter
-    healthCheckPath: /
+    plan: free
+    healthCheckPath: /play
     envVars:
       - key: QUIZ_ADMIN_PASSWORD
         sync: false          # à saisir dans le tableau de bord Render
-    disk:
-      name: quizdata
-      mountPath: /data
-      sizeGB: 1
+# Pour garder aussi les classements entre les redémarrages : plan « starter » + un disque
+#   plan: starter
+#   disk: { name: quizdata, mountPath: /data, sizeGB: 1 }

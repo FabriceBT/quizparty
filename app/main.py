@@ -25,7 +25,7 @@ from sqlalchemy import select
 from . import db, services
 from .config import BASE_DIR, MAX_UPLOAD_MB, MEDIA_DIR, ASSET_VERSION
 from .game import Game, GameError, manager
-from .backup import router as backup_router
+from .backup import load_seed_backups, router as backup_router
 from .library import router as library_router
 from .pwa import router as pwa_router
 from .openmode import open_session, router as open_router, streak_of
@@ -39,6 +39,7 @@ async def lifespan(_: FastAPI):
     db.init_db()
     with db.SessionLocal() as s:
         seed_demo_if_empty(s)
+        load_seed_backups(s)
     yield
 
 
